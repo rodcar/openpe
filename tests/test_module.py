@@ -2,6 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 from openpe import example_function, Categories, Dataset, WebScraper  # Use package-level imports
+from openpe.module import BASE_URL
 
 class TestModule(unittest.TestCase):
     def setUp(self):
@@ -82,6 +83,76 @@ class TestModule(unittest.TestCase):
         soup = scraper.parse_html(html)
         data = scraper.extract_data(soup, "div.some-class")
         self.assertEqual(data, ["Test1", "Test2"])
+
+    @patch('openpe.webscraper.requests.get')
+    def test_fetch_datasets_by_category(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_category("education")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.webscraper.requests.get')
+    def test_fetch_dataset_by_id(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"id": "1", "title": "Dataset 1"}
+        dataset = fetch_dataset_by_id("1")
+        self.assertEqual(dataset, {"id": "1", "title": "Dataset 1"})
+
+    @patch('openpe.webscraper.requests.get')
+    def test_fetch_datasets_by_url(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_url("http://example.com/api/datasets")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.webscraper.requests.get')
+    def test_fetch_datasets_by_multiple_categories(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_multiple_categories(["education", "health"])
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.webscraper.requests.get')
+    def test_search_datasets(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = search_datasets("education")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.module.requests.get')
+    def test_fetch_datasets_by_category(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_category("http://example.com", "education")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.module.requests.get')
+    def test_fetch_dataset_by_id(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"id": "1", "title": "Dataset 1"}
+        dataset = fetch_dataset_by_id("http://example.com", "1")
+        self.assertEqual(dataset, {"id": "1", "title": "Dataset 1"})
+
+    @patch('openpe.module.requests.get')
+    def test_fetch_datasets_by_url(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_url("http://example.com/api/datasets")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.module.requests.get')
+    def test_fetch_datasets_by_multiple_categories(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = fetch_datasets_by_multiple_categories("http://example.com", ["education", "health"])
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
+
+    @patch('openpe.module.requests.get')
+    def test_search_datasets(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{"id": "1", "title": "Dataset 1"}]
+        datasets = search_datasets("http://example.com", "education")
+        self.assertEqual(datasets, [{"id": "1", "title": "Dataset 1"}])
 
 if __name__ == '__main__':
     unittest.main()

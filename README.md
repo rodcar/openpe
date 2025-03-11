@@ -48,6 +48,26 @@ print(dataset.to_json())
 scraper = openpe.WebScraper(url="http://example.com")
 data = scraper.scrape()
 print(data)
+
+# Fetch datasets by category
+datasets_by_category = openpe.fetch_datasets_by_category(openpe.Categories.EDUCACION)
+print(datasets_by_category)
+
+# Fetch dataset by id
+dataset_by_id = openpe.fetch_dataset_by_id("dataset_id")
+print(dataset_by_id)
+
+# Fetch datasets by URL
+datasets_by_url = openpe.fetch_datasets_by_url("http://example.com/api/datasets")
+print(datasets_by_url)
+
+# Fetch datasets by multiple categories
+datasets_by_multiple_categories = openpe.fetch_datasets_by_multiple_categories([openpe.Categories.EDUCACION, openpe.Categories.SALUD])
+print(datasets_by_multiple_categories)
+
+# Search datasets by keyword
+datasets_by_keyword = openpe.search_datasets("education")
+print(datasets_by_keyword)
 ```
 
 ## Contributing
