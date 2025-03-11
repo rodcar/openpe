@@ -21,6 +21,28 @@ import openpe
 datasets = openpe.search('education')
 for dataset in datasets:
     print(dataset['title'])
+
+# Use the Dataset class
+dataset = openpe.Dataset(
+    id="dataset_id",
+    title="Education Data",
+    description="A dataset about education",
+    categories=[openpe.Categories.EDUCACION, openpe.Categories.SALUD],
+    url="http://example.com/dataset/123",
+    modified_date="2023-10-01",
+    release_date="2023-01-01",
+    publisher="Ministry of Education",
+    metadata={"source": "datosabiertos.gob.pe", "format": "CSV"}
+)
+
+print(dataset.title)
+print(dataset.description)
+print(dataset.categories)
+print(dataset.modified_date)
+print(dataset.release_date)
+print(dataset.publisher)
+print(dataset.metadata)
+print(dataset.to_json())
 ```
 
 ## Contributing

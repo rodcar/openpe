@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: openpe
-Version: 0.1.1
+Version: 0.1.0
 Summary: A library for search datasets on datosabiertos.gob.pe
 Home-page: https://github.com/rodcar/openpe
 Author: Ivan Yang Rodriguez Carranza
