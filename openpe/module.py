@@ -7,6 +7,7 @@ import pandas as pd
 import re
 from tqdm import tqdm
 import math
+from .dataset import Dataset
 
 BASE_URL = "https://datosabiertos.gob.pe"
 scraper = WebScraper(BASE_URL)
@@ -51,7 +52,7 @@ def get_items(page_content):
         
         dataset['description'] = description            
         dataset['resources'] = []
-    
+
         # Extracting all resource links (xlsx, docx, csv)
         resource_items = dataset_element.find_all('li')
         for item in resource_items:
@@ -98,9 +99,20 @@ def get_datasets_by_category(category, max_page=math.inf):
     while page_counter < max_page:
         print(f'page_url: {page_url}')
         results = scraper.fetch_page(page_url)
-        #print(f"results: {results}")
-        datasets.extend(get_items(results))
-        print(f"datasets: {len(datasets)}")
+        items = get_items(results)
+        for item in items:
+            dataset = Dataset(
+                id=item.get('id', ''),
+                title=item.get('title', ''),
+                description=item.get('description', ''),
+                categories=[category],
+                url=item.get('url', ''),
+                modified_date='',
+                release_date='',
+                publisher=item.get('organization', ''),
+                metadata={}
+            )
+            datasets.append(dataset)
         page_url = get_next_page_url(results)
         
         if not page_url:
@@ -108,17 +120,19 @@ def get_datasets_by_category(category, max_page=math.inf):
         page_counter += 1
     return datasets
 
-def get_dataset_details(url):
+def expand_dataset(dataset):
     details = {}
     try:
-        response = scraper.get_response(f'{BASE_URL}{url}')
-        response_content = response.content
-        soup = BeautifulSoup(response_content, 'html.parser')
-        link = soup.find('a', {'title': 'json view of content'})['href']
+        response = scraper.get_response(f'{BASE_URL}{dataset.url}')
+        page = parse_html(response.content)
+
+        link = page.find('a', {'title': 'json view of content'})['href']
         details['format_json_url'] = link
-    
-        item_json = scraper.get_response(link)
-        details['format_json'] = item_json.json()
+
+        metadata = scraper.get_response(link)
+
+        details['format_json'] = metadata.json()
+        dataset.metadata = metadata.json()
     except AttributeError:
         # Handle case where find() returns None or href doesn't exist
         details['format_json_url'] = None
@@ -129,7 +143,7 @@ def get_dataset_details(url):
         details['format_json_url'] = None
         details['format_json'] = None
         print(f"Error processing URL: {str(e)}")
-    return details
+    return dataset
 
 def get_data_dictionary_url(item):
     diccionario_url = None
@@ -188,23 +202,18 @@ def get_data_dictionary(url, headers=None):
         return None
 
 def expand_datasets(datasets, filename=None):
-    counter = 1
-    
+    expanded_datasets = []
     # tqdm adds progress bar
     for dataset in tqdm(datasets, desc="Expanding datasets", unit="dataset"):
-        dataset_uri = dataset['url']
-        print(f"Processing dataset {counter}: {dataset_uri}")
-        dataset_details = get_dataset_details(dataset_uri)
+        expanded_datasets.append(expand_dataset(dataset))
 
-        dataset['details'] = dataset_details
-        data_dictionary_url = get_data_dictionary_url(dataset_details['format_json'])
+        #dataset.metadata['details'] = dataset_details
+        #data_dictionary_url = get_data_dictionary_url(dataset_details['format_json'])
         
-        if data_dictionary_url is not None:
-            dataset['data_dictionary'] = get_data_dictionary(data_dictionary_url)
-        else:
-            dataset['data_dictionary'] = 'Diccionario de datos no disponible'
-        
-        counter += 1
+        #if data_dictionary_url is not None:
+            #dataset.metadata['data_dictionary'] = get_data_dictionary(data_dictionary_url)
+        #else:
+            #dataset.metadata['data_dictionary'] = 'Diccionario de datos no disponible'
     if filename:
-        to_json(datasets, filename)
+        to_json([dataset.__dict__ for dataset in expanded_datasets], filename)
     return datasets

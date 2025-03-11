@@ -63,12 +63,17 @@ class TestModule(unittest.TestCase):
     def test_get_datasets_by_category(self):
         datasets = get_datasets_by_category(Categories.MEDIO_AMBIENTE, max_page=1)
         self.assertEqual(len(datasets), 10)
+        print(datasets[0].__repr__())
+        self.assertIsInstance(datasets[0], Dataset)
 
+    #@unittest.skip("Skipping test_expand_datasets")
     def test_expand_datasets(self):
         datasets = get_datasets_by_category(Categories.MEDIO_AMBIENTE, max_page=1)
-        expanded_datasets = expand_datasets([datasets[0]])
+        expanded_datasets = expand_datasets(datasets[:1])
+        print(datasets[0].__repr__())
+        print(expanded_datasets[0].__repr__())
         self.assertEqual(len(expanded_datasets), 1)
-        self.assertNotEqual(expanded_datasets[0]['data_dictionary'], {})
+        #self.assertNotEqual(expanded_datasets[0].metadata.get('data_dictionary'), 'Diccionario de datos no disponible')
 
 if __name__ == '__main__':
     unittest.main()

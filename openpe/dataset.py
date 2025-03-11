@@ -13,7 +13,7 @@ class Dataset:
         self.metadata = metadata
 
     def __repr__(self):
-        return f"Dataset(id={self.id}, title={self.title}, categories={self.categories}, publisher={self.publisher})"
+        return f"Dataset(id={self.id}, title={self.title}, description={self.description}, categories={self.categories}, url={self.url}, modified_date={self.modified_date}, release_date={self.release_date}, publisher={self.publisher}, metadata={self.metadata})"
 
     def to_json(self):
         return json.dumps({
