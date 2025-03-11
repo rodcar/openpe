@@ -80,8 +80,9 @@ data = scraper.scrape()
 print(data)
 
 # Fetch datasets by category
-datasets_by_category = openpe.fetch_datasets_by_category(openpe.Categories.EDUCACION)
-print(datasets_by_category)
+datasets_by_category = openpe.get_datasets_by_category(openpe.Categories.EDUCACION)
+for dataset in datasets_by_category:
+    print(dataset.title)
 
 # Fetch dataset by id
 dataset_by_id = openpe.fetch_dataset_by_id("dataset_id")

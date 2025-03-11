@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 from .webscraper import WebScraper
 from .utils import to_json, from_json, parse_html
 import io
@@ -16,9 +15,19 @@ scraper = WebScraper(BASE_URL)
     #response = scraper.fetch_page(f"datasets/{dataset_id}")
     #return response.json()
 
-#def get_dataset_by_url(url: str) -> list:
-    #response = scraper.fetch_page(url)
-    #return response.json()
+def get_dataset_by_url(url):
+    dataset = Dataset(
+        url=url.replace("https://www.datosabiertos.gob.pe", "").replace("https://datosabiertos.gob.pe", ""),
+        id='',
+        title='',
+        description='',
+        categories=[],
+        modified_date='',
+        release_date='',
+        publisher='',
+        metadata={}
+    )
+    return expand_dataset(dataset)
 
 #def get_datasets_by_multiple_categories(categories: list) -> list:
     #categories_str = ','.join(categories)
@@ -132,6 +141,9 @@ def expand_dataset(dataset):
 
         details['format_json'] = metadata.json()
         dataset.metadata = metadata.json()
+        dataset.title = metadata.json()['result'][0]['title']
+        dataset.description = metadata.json()['result'][0]['notes']
+        dataset.url = metadata.json()['result'][0]['url']
         dataset.id = metadata.json()['result'][0]['id']
         dataset.modified_date = metadata.json()['result'][0]['metadata_modified']
         dataset.release_date = metadata.json()['result'][0]['metadata_created']
@@ -212,19 +224,13 @@ def get_data_dictionary(url, headers=None):
         print(f"An unexpected error occurred: {e}")
         return None
 
-def expand_datasets(datasets, filename=None):
+def expand_datasets(datasets, filename=None, show_progress=True):
     expanded_datasets = []
-    # tqdm adds progress bar
-    for dataset in tqdm(datasets, desc="Expanding datasets", unit="dataset"):
+    iterator = tqdm(datasets, desc="Expanding datasets", unit="dataset") if show_progress else datasets
+
+    for dataset in iterator:
         expanded_datasets.append(expand_dataset(dataset))
 
-        #dataset.metadata['details'] = dataset_details
-        #data_dictionary_url = get_data_dictionary_url(dataset_details['format_json'])
-        
-        #if data_dictionary_url is not None:
-            #dataset.metadata['data_dictionary'] = get_data_dictionary(data_dictionary_url)
-        #else:
-            #dataset.metadata['data_dictionary'] = 'Diccionario de datos no disponible'
     if filename:
         to_json([dataset.__dict__ for dataset in expanded_datasets], filename)
     return datasets
