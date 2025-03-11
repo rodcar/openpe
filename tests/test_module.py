@@ -1,6 +1,7 @@
 import json
 import unittest
-from openpe import example_function, Categories, Dataset  # Use package-level imports
+from unittest.mock import patch
+from openpe import example_function, Categories, Dataset, WebScraper  # Use package-level imports
 
 class TestModule(unittest.TestCase):
     def setUp(self):
@@ -60,6 +61,27 @@ class TestModule(unittest.TestCase):
             "metadata": {"key": "value"}
         })
         self.assertEqual(dataset.to_json(), expected_json)
+
+    @patch('openpe.webscraper.requests.get')
+    def test_webscraper_fetch_page(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = "<html></html>"
+        scraper = WebScraper(base_url="http://example.com")
+        html = scraper.fetch_page("some-endpoint")
+        self.assertEqual(html, "<html></html>")
+
+    def test_webscraper_parse_html(self):
+        scraper = WebScraper(base_url="http://example.com")
+        html = "<html><body><div class='some-class'>Test</div></body></html>"
+        soup = scraper.parse_html(html)
+        self.assertEqual(soup.find('div', class_='some-class').get_text(), "Test")
+
+    def test_webscraper_extract_data(self):
+        scraper = WebScraper(base_url="http://example.com")
+        html = "<html><body><div class='some-class'>Test1</div><div class='some-class'>Test2</div></body></html>"
+        soup = scraper.parse_html(html)
+        data = scraper.extract_data(soup, "div.some-class")
+        self.assertEqual(data, ["Test1", "Test2"])
 
 if __name__ == '__main__':
     unittest.main()

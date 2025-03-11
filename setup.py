@@ -6,6 +6,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         # List your dependencies here
+        "requests",
+        "bs4"
     ],
     author='Ivan Yang Rodriguez Carranza',
     author_email='nnrodcar@gmail.com',

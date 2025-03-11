@@ -43,6 +43,11 @@ print(dataset.release_date)
 print(dataset.publisher)
 print(dataset.metadata)
 print(dataset.to_json())
+
+# Use the WebScraper class
+scraper = openpe.WebScraper(url="http://example.com")
+data = scraper.scrape()
+print(data)
 ```
 
 ## Contributing
