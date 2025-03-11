@@ -7,7 +7,10 @@ setup(
     install_requires=[
         # List your dependencies here
         "requests",
-        "bs4"
+        "bs4",
+        "pandas",
+        "tqdm",
+        "openpyxl"
     ],
     author='Ivan Yang Rodriguez Carranza',
     author_email='nnrodcar@gmail.com',

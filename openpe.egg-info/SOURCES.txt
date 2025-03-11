@@ -5,6 +5,7 @@ openpe/__init__.py
 openpe/categories.py
 openpe/dataset.py
 openpe/module.py
+openpe/utils.py
 openpe/webscraper.py
 openpe.egg-info/PKG-INFO
 openpe.egg-info/SOURCES.txt
