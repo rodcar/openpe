@@ -1,0 +1,60 @@
+Metadata-Version: 2.2
+Name: openpe
+Version: 0.1.1
+Summary: A library for search datasets on datosabiertos.gob.pe
+Home-page: https://github.com/rodcar/openpe
+Author: Ivan Yang Rodriguez Carranza
+Author-email: nnrodcar@gmail.com
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-python
+Dynamic: summary
+
+# openpe
+
+A library for searching datasets on datosabiertos.gob.pe
+
+## Installation
+
+You can install the package using pip:
+
+```sh
+pip install openpe
+```
+
+## Usage
+
+Here's a basic example of how to use the library:
+
+```python
+import openpe
+
+# Search for datasets
+datasets = openpe.search('education')
+for dataset in datasets:
+    print(dataset['title'])
+```
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For any questions or suggestions, please open an issue or contact the maintainer at ivan@example.com.
