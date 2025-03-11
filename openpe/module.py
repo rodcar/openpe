@@ -97,7 +97,6 @@ def get_datasets_by_category(category, max_page=math.inf):
     page_counter = 0
         
     while page_counter < max_page:
-        print(f'page_url: {page_url}')
         results = scraper.fetch_page(page_url)
         items = get_items(results)
         for item in items:
@@ -133,6 +132,18 @@ def expand_dataset(dataset):
 
         details['format_json'] = metadata.json()
         dataset.metadata = metadata.json()
+        dataset.id = metadata.json()['result'][0]['id']
+        dataset.modified_date = metadata.json()['result'][0]['metadata_modified']
+        dataset.release_date = metadata.json()['result'][0]['metadata_created']
+        dataset.publisher = metadata.json()['result'][0]['groups'][0]['title']
+        dataset.categories = metadata.json()['result'][0]['groups']
+        
+        data_dictionary_url = get_data_dictionary_url(metadata.json())
+
+        if data_dictionary_url:
+            dataset.data_dictionary = get_data_dictionary(data_dictionary_url)
+        else:
+            dataset.data_dictionary = 'Diccionario de datos no disponible'
     except AttributeError:
         # Handle case where find() returns None or href doesn't exist
         details['format_json_url'] = None
