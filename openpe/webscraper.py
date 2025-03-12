@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 class WebScraper:
-    def __init__(self, base_url: str, headers: dict = None):
+    def __init__(self, base_url: str = '', headers: dict = None):
         self.base_url = base_url
         self.headers = headers or {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"

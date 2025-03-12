@@ -2,13 +2,14 @@ import json
 import os
 import requests
 from .webscraper import WebScraper
-from .utils import to_json, from_json, parse_html
+from .utils import to_json, parse_html
 import io
 import pandas as pd
 import re
 from tqdm import tqdm
 import math
 from .dataset import Dataset
+import time
 
 BASE_URL = "https://datosabiertos.gob.pe"
 scraper = WebScraper(BASE_URL)
@@ -17,9 +18,15 @@ scraper = WebScraper(BASE_URL)
     #response = scraper.fetch_page(f"datasets/{dataset_id}")
     #return response.json()
 
-def get_dataset_by_url(url):
+def get_dataset(url):
+    #delete datosabiertos.gob.pe and alternatives on the url
+    url = re.sub(r'https?://(www\.)?datosabiertos.gob.pe', '', url)
+
+    if not url.startswith('/'):
+        url = '/dataset/' + url
+    #print(f'url updated {url}')
     dataset = Dataset(
-        url=url.replace("https://www.datosabiertos.gob.pe", "").replace("https://datosabiertos.gob.pe", ""),
+        url=url,
         id='',
         title='',
         description='',
@@ -41,27 +48,8 @@ def get_dataset_by_url(url):
     #return response.json()
 
 # download the dataset files or resource in a new folder: dataset id.json
-def download_dataset(dataset: Dataset, filename: str):
-    folder_name = dataset.id
-    os.makedirs(folder_name, exist_ok=True)
-    
-    for resource in dataset.metadata['result'][0]['resources']:
-        resource_url = resource['url']
-        resource_format = resource['format']
-        resource_name = resource['name']
-        
-        response = requests.get(resource_url)
-        if response.status_code == 200:
-            file_extension = resource_format.lower()
-            file_path = os.path.join(folder_name, f"{resource_name}.{file_extension}")
-            
-            with open(file_path, 'wb') as file:
-                file.write(response.content)
-        else:
-            print(f"Failed to download {resource_name}. Status code: {response.status_code}")
-    
-    with open(os.path.join(folder_name, f"{dataset.id}.json"), 'w') as json_file:
-        json.dump(dataset.metadata, json_file, indent=4)
+def download_dataset(dataset: Dataset):
+    dataset.download_files()
 
 def get_items(page_content):
     page = parse_html(page_content)
@@ -125,15 +113,20 @@ def get_next_page_url(page_content):
 
     return pagination_info['next_page_url']
 
-def get_datasets_by_category(category, max_page=math.inf):
+def get_datasets(category, limit=math.inf, show_progress=True):
     page_url = f'search/field_topic/{category}/type/dataset?sort_by=changed'
     datasets = []
     page_counter = 0
-        
-    while page_counter < max_page:
+    items_per_page = 10
+
+    iterator = tqdm(total=limit, desc="Fetching datasets", unit="dataset") if show_progress else range(limit)
+
+    while len(datasets) < limit:
         results = scraper.fetch_page(page_url)
         items = get_items(results)
         for item in items:
+            if len(datasets) >= limit:
+                break
             dataset = Dataset(
                 id=item.get('id', ''),
                 title=item.get('title', ''),
@@ -145,16 +138,26 @@ def get_datasets_by_category(category, max_page=math.inf):
                 publisher=item.get('organization', ''),
                 metadata={}
             )
-            datasets.append(dataset)
+
+            if len(datasets) < limit:
+                dataset = expand_dataset(dataset)
+                datasets.append(dataset)
+                if show_progress:
+                    iterator.update(1)
         page_url = get_next_page_url(results)
         
         if not page_url:
             break
         page_counter += 1
+
+    if show_progress:
+        iterator.close()
+    
     return datasets
 
-def expand_dataset(dataset):
+def expand_dataset(dataset, include_data_dictionary=False):
     details = {}
+    
     try:
         response = scraper.get_response(f'{BASE_URL}{dataset.url}')
         page = parse_html(response.content)
@@ -175,12 +178,13 @@ def expand_dataset(dataset):
         dataset.publisher = metadata.json()['result'][0]['groups'][0]['title']
         dataset.categories = metadata.json()['result'][0]['groups']
         
-        data_dictionary_url = get_data_dictionary_url(metadata.json())
+        if include_data_dictionary:
+            data_dictionary_url = get_data_dictionary_url(metadata.json())
 
-        if data_dictionary_url:
-            dataset.data_dictionary = get_data_dictionary(data_dictionary_url)
-        else:
-            dataset.data_dictionary = 'Diccionario de datos no disponible'
+            if data_dictionary_url:
+                dataset.data_dictionary = get_data_dictionary(data_dictionary_url)
+            else:
+                dataset.data_dictionary = 'Diccionario de datos no disponible'
     except AttributeError:
         # Handle case where find() returns None or href doesn't exist
         details['format_json_url'] = None
@@ -255,7 +259,110 @@ def expand_datasets(datasets, filename=None, show_progress=True):
 
     for dataset in iterator:
         expanded_datasets.append(expand_dataset(dataset))
+        time.sleep(1)  # Add a 5 seconds wait
 
     if filename:
         to_json([dataset.__dict__ for dataset in expanded_datasets], filename)
+    return datasets
+
+def save(datasets):
+    """
+    Save a dataset or list of datasets in JSON format inside the 'datasets' folder.
+    Each dataset is saved in its own subfolder named after its ID.
+    
+    Args:
+        datasets: A single Dataset object or a list of Dataset objects.
+    
+    Returns:
+        None
+    """
+    # Convert single dataset to list for uniform handling
+    if not isinstance(datasets, list):
+        datasets = [datasets]
+    
+    # Create datasets directory if it doesn't exist
+    os.makedirs('datasets', exist_ok=True)
+    
+    for dataset in datasets:
+        # Create a directory for this dataset
+        dataset_dir = os.path.join('datasets', dataset.id)
+        os.makedirs(dataset_dir, exist_ok=True)
+        
+        # Convert dataset to a serializable dictionary
+        # This assumes that dataset can be serialized to JSON
+        dataset_dict = dataset.to_dict() if hasattr(dataset, 'to_dict') else dataset.__dict__
+        
+        # Save dataset as JSON
+        json_path = os.path.join(dataset_dir, f"{dataset.id}.json")
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(dataset_dict, f, indent=4, ensure_ascii=False)
+
+def load(dataset_name=None):
+    """
+    Load datasets from the 'datasets' folder.
+    
+    Args:
+        dataset_name (str, optional): Name of a specific dataset to load.
+            If not provided, all datasets will be loaded.
+            This can be either the dataset ID (folder name) or the dataset's display name.
+    
+    Returns:
+        Dataset or list[Dataset]: A single Dataset object if dataset_name is provided,
+            or a list of Dataset objects if no dataset_name is provided.
+    """
+    datasets_dir = 'datasets'
+    
+    # Check if datasets directory exists
+    if not os.path.isdir(datasets_dir):
+        if dataset_name:
+            raise FileNotFoundError(f"Dataset directory not found: {datasets_dir}")
+        return []
+    
+    # Direct match - check if dataset_name is actually an ID (folder name)
+    if dataset_name and os.path.isdir(os.path.join(datasets_dir, dataset_name)):
+        dataset_dir = os.path.join(datasets_dir, dataset_name)
+        json_path = os.path.join(dataset_dir, f"{dataset_name}.json")
+        
+        if os.path.isfile(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                dataset_dict = json.load(f)
+            return Dataset(**dataset_dict)
+    
+    # If no direct match or no specific dataset requested, load all datasets
+    datasets = []
+    for item in os.listdir(datasets_dir):
+        item_path = os.path.join(datasets_dir, item)
+        # Check if it's a directory
+        if os.path.isdir(item_path):
+            json_path = os.path.join(item_path, f"{item}.json")
+            # Check if the JSON file exists
+            if os.path.isfile(json_path):
+                try:
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        dataset_dict = json.load(f)
+                    
+                    # Create dataset object
+                    dataset = Dataset(**dataset_dict)
+                    
+                    # If looking for a specific dataset by name
+                    if dataset_name:
+                        # Check if the dataset name matches in metadata
+                        try:
+                            if (dataset.metadata and 
+                                'result' in dataset.metadata and 
+                                dataset.metadata['result'] and 
+                                dataset.metadata['result'][0].get('name') == dataset_name):
+                                return dataset
+                        except (KeyError, IndexError, AttributeError):
+                            # Skip this dataset if there's an issue with the metadata structure
+                            pass
+                    else:
+                        datasets.append(dataset)
+                except Exception as e:
+                    print(f"Error loading dataset {item}: {e}")
+    
+    # If we're looking for a specific dataset but didn't find it
+    if dataset_name:
+        raise FileNotFoundError(f"No dataset found with name: {dataset_name}")
+    
     return datasets

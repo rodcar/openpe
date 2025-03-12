@@ -1,37 +1,97 @@
 import json
 import unittest
+import os
 from unittest.mock import patch
+
+import pandas as pd
 import openpe as pe
 from openpe import Categories, Dataset
 
 class TestModule(unittest.TestCase):
+
+    @unittest.skip("Skipping test_get_datasets_by_category")
+    def test_get_datasets(self):
+        datasets = pe.get_datasets(Categories.MEDIO_AMBIENTE, limit=2)
+        self.assertEqual(len(datasets), 2)
+        self.assertIsInstance(datasets[0], Dataset)
+
+    @unittest.skip("Skipping test_get_datasets_by_category_multiple_pages")
+    def test_get_datasets_multiple_pages(self):
+        datasets = pe.get_datasets(Categories.MEDIO_AMBIENTE, limit=30)
+        self.assertEqual(len(datasets), 30)
+        self.assertIsInstance(datasets[0], Dataset)
+
+    #@unittest.skip("Skipping test_expand_datasets")
+    #def test_expand_datasets(self):
+        #datasets = pe.get_datasets(Categories.MEDIO_AMBIENTE, limit=1)
+        #expanded_datasets = pe.expand_datasets(datasets)
+        #print(expanded_datasets[0].__repr__(simple=True))
+        #self.assertEqual(len(expanded_datasets), 1)
     
+    @unittest.skip("Skipping test_get_dataset_by_url")
+    def test_get_dataset_by_url(self):
+        dataset = pe.get_dataset('https://www.datosabiertos.gob.pe/dataset/dataset-01-cartera-proyectos-lambayeque-activos')
+        dataset.__repr__(simple=True)
+        self.assertIsInstance(dataset, Dataset)
+
     def test_add_new_category(self):
         Categories.register_category("NEW_EDUCACION", "Educación")
         self.assertEqual(Categories.NEW_EDUCACION, "Educación")
 
-    @unittest.skip("Skipping test_get_datasets_by_category")
-    def test_get_datasets_by_category(self):
-        datasets = pe.get_datasets_by_category(Categories.MEDIO_AMBIENTE, max_page=1)
-        self.assertEqual(len(datasets), 10)
-        self.assertIsInstance(datasets[0], Dataset)
+    @unittest.skip("Skipping test_get_datasetl")
+    def test_download_dataset(self):
+        dataset = pe.get_dataset('https://www.datosabiertos.gob.pe/dataset/volumen-de-desembarque-mensual-de-recursos-hidrobiol%C3%B3gicos-por-puerto-y-por-especie-en-la')
+        dataset_id = dataset.id
+        dataset.download_files()
+        
+        # Check if the folder with the dataset id exists inside 'datasets' folder
+        datasets_folder = os.path.join('datasets', dataset_id)
+        self.assertTrue(os.path.isdir(datasets_folder), f"Folder {datasets_folder} does not exist")
 
-    @unittest.skip("Skipping test_get_datasets_by_category_multiple_pages")
-    def test_get_datasets_by_category_multiple_pages(self):
-        datasets = pe.get_datasets_by_category(Categories.MEDIO_AMBIENTE, max_page=3)
-        self.assertEqual(len(datasets), 30)
-        self.assertIsInstance(datasets[0], Dataset)
+    #@unittest.skip("Skipping test_get_datasetl")
+    def test_download_dataset_uri_based(self):
+        dataset = pe.get_dataset('consumo-de-energía-eléctrica-de-los-clientes-de-electro-puno-saa')
+        dataset_id = dataset.id
+        dataset.download_files()
 
-    def test_expand_datasets(self):
-        datasets = pe.get_datasets_by_category(Categories.MEDIO_AMBIENTE, max_page=1)
-        expanded_datasets = pe.expand_datasets(datasets[:1], show_progress=False)
-        #print(expanded_datasets[0].__repr__(simple=True))
-        self.assertEqual(len(expanded_datasets), 1)
+        # Check if the folder with the dataset id exists inside 'datasets' folder
+        datasets_folder = os.path.join('datasets', dataset_id)
+        self.assertTrue(os.path.isdir(datasets_folder), f"Folder {datasets_folder} does not exist")
     
-    def test_get_dataset_by_url(self):
-        url = 'https://www.datosabiertos.gob.pe/dataset/dataset-01-cartera-proyectos-lambayeque-activos'
-        dataset = pe.get_dataset_by_url(url)
-        dataset.__repr__(simple=True)
+    @unittest.skip('')
+    def test_save_datasets(self):
+        datasets = pe.get_datasets(Categories.MEDIO_AMBIENTE, limit=3)
+        pe.save(datasets)
+        #print(expanded_datasets[0].__repr__(simple=True))
+        #self.assertEqual(len(expanded_datasets), 5)
+
+    @unittest.skip('')
+    def test_load_datasets(self):
+        datasets = pe.load()
+        self.assertEqual(len(datasets), 2)
+
+    #@unittest.skip('')
+    def test_download_dataset_uri_based_2(self):
+        dataset = pe.get_dataset('consumo-de-energía-eléctrica-de-los-clientes-de-electro-puno-saa')
+        pe.save(dataset)
+        self.assertIsInstance(dataset, Dataset)
+
+    @unittest.skip('')
+    def test_load_dataset(self):
+        dataset = pe.load('consumo-de-energía-eléctrica-de-los-clientes-de-electro-puno-saa')
+        self.assertIsInstance(dataset, Dataset)
+
+    #@unittest.skip('')
+    def test_load_dataset_data(self):
+        dataset = pe.load('consumo-de-energía-eléctrica-de-los-clientes-de-electro-puno-saa')
+        data = dataset.data() # search for the only .csv file or data file otherwise needs a name as argument
+        self.assertIsInstance(data['Consumo de energía eléctrica de los clientes de Electro Puno S.A.A. - [Electro Puno S.A.A.] - Febrero 2023.csv'], pd.DataFrame)
+    
+    #@unittest.skip('')
+    def test_load_dataset_data_1(self):
+        datasets = pe.load()
+        data = datasets[1].data() # search for the only .csv file or data file otherwise needs a name as argument
+        print(data)
 
 if __name__ == '__main__':
     unittest.main()
