@@ -29,9 +29,9 @@ class TestModule(unittest.TestCase):
         self.assertEqual(len(expanded_datasets), 1)
     
     def test_get_dataset_by_url(self):
-            url = 'https://www.datosabiertos.gob.pe/dataset/dataset-01-cartera-proyectos-lambayeque-activos'
-            dataset = pe.get_dataset_by_url(url)
-            dataset.__repr__(simple=True)
-            
+        url = 'https://www.datosabiertos.gob.pe/dataset/dataset-01-cartera-proyectos-lambayeque-activos'
+        dataset = pe.get_dataset_by_url(url)
+        dataset.__repr__(simple=True)
+
 if __name__ == '__main__':
     unittest.main()

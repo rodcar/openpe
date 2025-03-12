@@ -1,3 +1,5 @@
+import json
+import os
 import requests
 from .webscraper import WebScraper
 from .utils import to_json, from_json, parse_html
@@ -37,6 +39,29 @@ def get_dataset_by_url(url):
 #def get_datasets(keyword: str) -> list:
     #response = scraper.fetch_page(f"datasets?search={keyword}")
     #return response.json()
+
+# download the dataset files or resource in a new folder: dataset id.json
+def download_dataset(dataset: Dataset, filename: str):
+    folder_name = dataset.id
+    os.makedirs(folder_name, exist_ok=True)
+    
+    for resource in dataset.metadata['result'][0]['resources']:
+        resource_url = resource['url']
+        resource_format = resource['format']
+        resource_name = resource['name']
+        
+        response = requests.get(resource_url)
+        if response.status_code == 200:
+            file_extension = resource_format.lower()
+            file_path = os.path.join(folder_name, f"{resource_name}.{file_extension}")
+            
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+        else:
+            print(f"Failed to download {resource_name}. Status code: {response.status_code}")
+    
+    with open(os.path.join(folder_name, f"{dataset.id}.json"), 'w') as json_file:
+        json.dump(dataset.metadata, json_file, indent=4)
 
 def get_items(page_content):
     page = parse_html(page_content)
