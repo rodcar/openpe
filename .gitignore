@@ -119,3 +119,9 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Testing
+datasets/
+
+# Others
+.pyc
