@@ -61,13 +61,13 @@ class Dataset:
         Returns:
             str: The content of the data dictionary, or None if not found
         """
-        print(f"DEBUG: Starting to retrieve data dictionary for dataset {self.id}")
+        #print(f"DEBUG: Starting to retrieve data dictionary for dataset {self.id}")
         if not self.metadata or 'result' not in self.metadata or not self.metadata['result'] or 'resources' not in self.metadata['result'][0]:
             print("DEBUG: No metadata or resources found")
             return None
             
         resources = self.metadata['result'][0]['resources']
-        print(f"DEBUG: Found {len(resources)} resources in metadata")
+        #print(f"DEBUG: Found {len(resources)} resources in metadata")
         dictionary_keywords = ["diccionario de datos", "diccionario", "Diccionario de datos", "Diccionario de Datos", "Diccionario De Datos"]
         
         # Filter resources to find data dictionary
@@ -81,34 +81,34 @@ class Dataset:
                     break
         
         if not dictionary_resources:
-            print("DEBUG: No data dictionary resources found")
+            #print("DEBUG: No data dictionary resources found")
             return None
         
         # Try to download and process the first matching dictionary resource
         try:
-            print(f"DEBUG: Attempting to process {len(dictionary_resources)} data dictionary resources")
+            #print(f"DEBUG: Attempting to process {len(dictionary_resources)} data dictionary resources")
             scraper = WebScraper()
             resource = dictionary_resources[0]
             resource_url = resource['url']
             resource_format = resource.get('format', '').lower()
-            print(f"DEBUG: Downloading data dictionary from {resource_url} (format: {resource_format})")
+            #print(f"DEBUG: Downloading data dictionary from {resource_url} (format: {resource_format})")
             
             # Download the content
             response = scraper.get_response(resource_url)
-            print(f"DEBUG: Download status code: {response.status_code}")
+            #print(f"DEBUG: Download status code: {response.status_code}")
             if response.status_code != 200:
                 return None
                 
             content = response.content
-            print(f"DEBUG: Downloaded content size: {len(content)} bytes")
+            #print(f"DEBUG: Downloaded content size: {len(content)} bytes")
             
             # Process based on format
             if resource_format == 'pdf':
-                print("DEBUG: Found PDF data dictionary")
+                #print("DEBUG: Found PDF data dictionary")
                 # For PDF, just return the URL since we can't easily extract text
                 return f"PDF data dictionary available at: {resource_url}"
             elif resource_format in ['.xlsx', '.xls', 'xlsx', 'xls']:
-                print("DEBUG: Processing Excel data dictionary")
+                #print("DEBUG: Processing Excel data dictionary")
                 # Process Excel files like in module.get_data_dictionary()
                 try:
                     # Store the content in an in-memory file
@@ -116,11 +116,11 @@ class Dataset:
                     
                     # Load the Excel file into a DataFrame
                     df = pd.read_excel(in_memory_file)
-                    print(f"DEBUG: Excel data loaded, shape: {df.shape}")
+                    #print(f"DEBUG: Excel data loaded, shape: {df.shape}")
                     
                     # Select only the first two columns, drop NaN values, and clean the data
                     df_filtered = df.iloc[:, :2].dropna()  # First two columns and remove NaNs
-                    print(f"DEBUG: Filtered data shape: {df_filtered.shape}")
+                    #print(f"DEBUG: Filtered data shape: {df_filtered.shape}")
                     df_filtered = df_filtered.apply(lambda x: x.str.strip() if hasattr(x, 'str') else x)  # Strip whitespace
                     
                     # Convert to string without index or header
@@ -129,30 +129,30 @@ class Dataset:
                     # Clean up excessive spaces and format with tabs
                     df_text_cleaned = re.sub(r' {3,}', '\t', df_text)
                     df_text_cleaned = '\n'.join(line.lstrip() for line in df_text_cleaned.split('\n'))
-                    print(f"DEBUG: Processed text length: {len(df_text_cleaned)} chars")
+                    #print(f"DEBUG: Processed text length: {len(df_text_cleaned)} chars")
                     
                     return df_text_cleaned
                 except Exception as e:
-                    print(f"DEBUG: Error processing Excel file: {e}")
+                    #print(f"DEBUG: Error processing Excel file: {e}")
                     return f"{resource_format.upper()} data dictionary available at: {resource_url}"
             else:
-                print(f"DEBUG: Attempting to decode text content from {resource_format} file")
+                #print(f"DEBUG: Attempting to decode text content from {resource_format} file")
                 # For text formats, decode and return the content
                 try:
                     text_content = content.decode('utf-8')
-                    print(f"DEBUG: Successfully decoded with utf-8, length: {len(text_content)}")
+                    #print(f"DEBUG: Successfully decoded with utf-8, length: {len(text_content)}")
                     return text_content
                 except UnicodeDecodeError:
-                    print("DEBUG: utf-8 decode failed, trying latin1")
+                    #print("DEBUG: utf-8 decode failed, trying latin1")
                     try:
                         text_content = content.decode('latin1')
-                        print(f"DEBUG: Successfully decoded with latin1, length: {len(text_content)}")
+                        #print(f"DEBUG: Successfully decoded with latin1, length: {len(text_content)}")
                         return text_content
                     except:
-                        print("DEBUG: All decoding attempts failed")
+                        #print("DEBUG: All decoding attempts failed")
                         return f"Data dictionary available at: {resource_url}"
         except Exception as e:
-            print(f"DEBUG: Error retrieving data dictionary: {str(e)}")
+            #print(f"DEBUG: Error retrieving data dictionary: {str(e)}")
             return None
 
     def to_dict(self):
@@ -444,3 +444,73 @@ class Dataset:
             return pd.read_parquet(file_path)
         else:
             raise ValueError(f"Unsupported file format: {file_ext}")
+
+    def get_files_dict(self):
+        """
+        Returns a dictionary of files available in the dataset.
+        
+        Returns:
+            dict: Dictionary with file names as keys and file information as values
+        """
+        if not self.metadata or 'result' not in self.metadata or not self.metadata['result'] or 'resources' not in self.metadata['result'][0]:
+            return {}
+                
+        resources = self.metadata['result'][0]['resources']
+        files_dict = {}
+        
+        for i, resource in enumerate(resources):
+            name = resource.get('name', f'file_{i}')
+            # Make sure keys are unique by appending an index if duplicated
+            key = name
+            counter = 1
+            while key in files_dict:
+                key = f"{name}_{counter}"
+                counter += 1
+                    
+            files_dict[key] = {
+                'format': resource.get('format', ''),
+                'url': resource.get('url', '')
+            }
+        
+        return files_dict
+
+    def format_files(self):
+        """
+        Returns a formatted string representation of the files available in the dataset.
+        
+        Returns:
+            str: Formatted string showing files details
+        """
+        files_dict = self.get_files_dict()  # Updated to use get_files_dict()
+        
+        if not files_dict:
+            return "No files available for this dataset."
+        
+        result = f"\n=== Files for dataset: {self.title} ===\n"
+        
+        for i, (name, info) in enumerate(files_dict.items(), 1):
+            format_str = info['format'].upper() if info['format'] else 'UNKNOWN'
+            result += f"\n{i}. {name} ({format_str})"
+            result += f"\n   URL: {info['url']}"
+            result += "\n"  # Empty line for better readability
+        
+        return result
+
+    def print_files(self):
+        """
+        Pretty prints the files available in the dataset.
+        
+        Returns:
+            None: This method prints to stdout and doesn't return a value
+        """
+        print(self.format_files())
+
+    @property
+    def files(self):
+        """
+        Property that returns a formatted string representation of files.
+        
+        Returns:
+            str: Formatted string showing files details
+        """
+        return self.format_files()

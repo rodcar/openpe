@@ -90,7 +90,8 @@ class TestModule(unittest.TestCase):
     #@unittest.skip('')
     def test_load_dataset_data_1(self):
         datasets = pe.load()
-        data = datasets[1].data() # search for the only .csv file or data file otherwise needs a name as argument
+        print(datasets[1].title)
+        data = datasets[1].data('Consumo de energía eléctrica de los clientes de Electro Puno S.A.A. - [Electro Puno S.A.A.] - Enero 2023.csv') # search for the only .csv file or data file otherwise needs a name as argument
         print(data.head())
 
     def test_get_dataset_and_data_directly(self):
@@ -104,6 +105,10 @@ class TestModule(unittest.TestCase):
         dataset = pe.get_dataset('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
         dic = dataset.data_dictionary
         print(dic)
+
+    def test_load_dataset_show_files(self):
+        datasets = pe.load()
+        print(datasets[0].files)
 
 if __name__ == '__main__':
     unittest.main()
