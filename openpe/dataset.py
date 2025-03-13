@@ -76,7 +76,7 @@ class Dataset:
             resource_name = resource.get('name', '').lower()
             for keyword in dictionary_keywords:
                 if keyword in resource_name:
-                    print(f"DEBUG: Found potential data dictionary: {resource_name}")
+                    #print(f"DEBUG: Found potential data dictionary: {resource_name}")
                     dictionary_resources.append(resource)
                     break
         
@@ -486,7 +486,7 @@ class Dataset:
         if not files_dict:
             return "No files available for this dataset."
         
-        result = f"\n=== Files for dataset: {self.title} ===\n"
+        result = f"\n=== Archivos del datasset: {self.title} ===\n"
         
         for i, (name, info) in enumerate(files_dict.items(), 1):
             format_str = info['format'].upper() if info['format'] else 'UNKNOWN'
