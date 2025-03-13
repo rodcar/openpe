@@ -1,84 +1,86 @@
-# openpe
+# OpenPE: Acceso simplificado a los datos abiertos de Perú
 
-A library for searching datasets on datosabiertos.gob.pe
+¡Bienvenido!  Este es un resumen de `openpe`, una librería diseñada para facilitar la obtención de datasets desde la Plataforma Nacional de Datos Abiertos (PNDA) del Perú [datosabiertos.gob.pe](https://datosabiertos.gob.pe). 
 
-## Installation
+## ¿Qué es OpenPE? 
 
-You can install the package using pip:
+`openpe` simplifica el proceso de búsqueda y descarga de datos desde el portal de datos abiertos. Proporciona funciones intuitivas para:
 
-```sh
+- **Buscar datasets**: Encuentra datasets por categorías o accede a conjuntos específicos utilizando su nombre o URL. 
+- **Descargar datasets**: Obtén datasets y archivos asociados en formatos comunes como CSV, XSLX, y otros. 
+- **Explorar metadatos**: Accede a información detallada sobre cada dataset, incluyendo los diccionarios de datos. 
+
+## Instalación de OpenPE ️
+
+Ejecuta:
+
+```bash
 pip install openpe
 ```
 
-## Usage
+## Primeros pasos con OpenPE 
 
-Here's a basic example of how to use the library:
+### 1. Importar la librería
 
-```python
-import openpe
-
-# Search for datasets
-datasets = openpe.search('education')
-for dataset in datasets:
-    print(dataset['title'])
-
-# Use the Dataset class
-dataset = openpe.Dataset(
-    id="dataset_id",
-    title="Education Data",
-    description="A dataset about education",
-    categories=[openpe.Categories.EDUCACION, openpe.Categories.SALUD],
-    url="http://example.com/dataset/123",
-    modified_date="2023-10-01",
-    release_date="2023-01-01",
-    publisher="Ministry of Education",
-    metadata={"source": "datosabiertos.gob.pe", "format": "CSV"}
-)
-
-print(dataset.title)
-print(dataset.description)
-print(dataset.categories)
-print(dataset.modified_date)
-print(dataset.release_date)
-print(dataset.publisher)
-print(dataset.metadata)
-print(dataset.to_json())
-
-# Use the WebScraper class
-scraper = openpe.WebScraper(url="http://example.com")
-data = scraper.scrape()
-print(data)
-
-# Fetch datasets by category
-datasets_by_category = openpe.get_datasets_by_category(openpe.Categories.EDUCACION)
-for dataset in datasets_by_category:
-    print(dataset.title)
-
-# Fetch dataset by id
-dataset_by_id = openpe.fetch_dataset_by_id("dataset_id")
-print(dataset_by_id)
-
-# Fetch datasets by URL
-datasets_by_url = openpe.fetch_datasets_by_url("http://example.com/api/datasets")
-print(datasets_by_url)
-
-# Fetch datasets by multiple categories
-datasets_by_multiple_categories = openpe.fetch_datasets_by_multiple_categories([openpe.Categories.EDUCACION, openpe.Categories.SALUD])
-print(datasets_by_multiple_categories)
-
-# Search datasets by keyword
-datasets_by_keyword = openpe.search_datasets("education")
-print(datasets_by_keyword)
+```bash
+import openpe as pe
 ```
 
-## Contributing
+### 2. Obtener un dataset específico
 
-Contributions are welcome! Please fork the repository and submit a pull request.
+```bash
+dataset = pe.get_dataset('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
+dataset.to_dict()
+```
 
-## License
+### 3. Acceder directamente a los datos con `data()`
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+```bash
+data = dataset.data()
+data.head()
+```
 
-## Contact
+### 4. Consultar el diccionario de datos con `data_dictionary`
 
-For any questions or suggestions, please open an issue or contact the maintainer at ivan@example.com.
+```bash
+print(dataset.data_dictionary)
+```
+
+### 5. Descargar los archivos del dataset
+
+```bash
+dataset.download_files()
+```
+
+### 6. Trabaja con tus archivos locales con `load()`
+
+```bash
+dataset = pe.load('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
+dataset.data().head()
+```
+
+## Ejemplo completo: Analizando matrículas de la UNI 
+
+```bash
+import openpe
+
+dataset = openpe.get_dataset('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
+data = dataset.data()
+
+alumnos_por_anio = data['ANIO'].value_counts().sort_index()
+print("\nCantidad de alumnos matriculados por año:")
+print(alumnos_por_anio)
+```
+
+## Tutorial detallado en Colab
+
+Para una guía paso a paso con ejemplos prácticos, consulta el siguiente notebook de Google Colab:
+
+- [Introducción a OpenPE: Acceso simplificado a los datos abiertos de Perú](https://colab.research.google.com/drive/1WoonI0Av7FZzv19_IsyCllGGc_YWFrNI?usp=sharing)
+
+
+## Siguientes pasos 
+
+Prueba buscar un dataset de tu interés en [datosabiertos.gob.pe](https://datosabiertos.gob.pe) y usa `openpe` para trabajar con ellos. Para potenciar tu experiencia, prueba la extensión de Chrome [Ideas Abiertas](https://chromewebstore.google.com/detail/oloeehbhdjkhbkgdapldehjpnnlfgpla?utm_source=item-share-cb). ✨
+
+LinkedIn: [Ivan Yang Rodriguez Carranza](https://www.linkedin.com/in/irodcar)
