@@ -125,3 +125,6 @@ datasets/
 
 # Others
 .pyc
+.DS_Store
+dist/
+openpe.egg-info/
