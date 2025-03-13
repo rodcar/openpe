@@ -4,7 +4,8 @@ from .webscraper import WebScraper
 import time
 import pandas as pd
 import glob
-import io  # Add this import
+import io
+import re  # Add import for regex processing
 
 class Dataset:
     def __init__(self, id: str, title: str, description: str, categories: list, url: str, modified_date: str, release_date: str, publisher: str, metadata: dict, data_dictionary: str = None):
@@ -17,7 +18,7 @@ class Dataset:
         self.release_date = release_date
         self.publisher = publisher
         self.metadata = metadata
-        self.data_dictionary = data_dictionary
+        self._data_dictionary = data_dictionary  # Changed to private attribute
 
     def __repr__(self, simple=False):
         if simple:
@@ -38,6 +39,122 @@ class Dataset:
             "data_dictionary": self.data_dictionary
         })
 
+    @property
+    def data_dictionary(self):
+        """
+        Property that returns the data dictionary. If it's None or empty,
+        it will attempt to fetch the data dictionary from the dataset resources.
+        """
+        if self._data_dictionary is None or self._data_dictionary == "":
+            self._data_dictionary = self.get_data_dictionary()
+        return self._data_dictionary
+    
+    @data_dictionary.setter
+    def data_dictionary(self, value):
+        """Setter for data_dictionary property"""
+        self._data_dictionary = value
+    
+    def get_data_dictionary(self):
+        """
+        Searches for and retrieves the data dictionary from the dataset resources.
+        
+        Returns:
+            str: The content of the data dictionary, or None if not found
+        """
+        print(f"DEBUG: Starting to retrieve data dictionary for dataset {self.id}")
+        if not self.metadata or 'result' not in self.metadata or not self.metadata['result'] or 'resources' not in self.metadata['result'][0]:
+            print("DEBUG: No metadata or resources found")
+            return None
+            
+        resources = self.metadata['result'][0]['resources']
+        print(f"DEBUG: Found {len(resources)} resources in metadata")
+        dictionary_keywords = ["diccionario de datos", "diccionario", "Diccionario de datos", "Diccionario de Datos", "Diccionario De Datos"]
+        
+        # Filter resources to find data dictionary
+        dictionary_resources = []
+        for resource in resources:
+            resource_name = resource.get('name', '').lower()
+            for keyword in dictionary_keywords:
+                if keyword in resource_name:
+                    print(f"DEBUG: Found potential data dictionary: {resource_name}")
+                    dictionary_resources.append(resource)
+                    break
+        
+        if not dictionary_resources:
+            print("DEBUG: No data dictionary resources found")
+            return None
+        
+        # Try to download and process the first matching dictionary resource
+        try:
+            print(f"DEBUG: Attempting to process {len(dictionary_resources)} data dictionary resources")
+            scraper = WebScraper()
+            resource = dictionary_resources[0]
+            resource_url = resource['url']
+            resource_format = resource.get('format', '').lower()
+            print(f"DEBUG: Downloading data dictionary from {resource_url} (format: {resource_format})")
+            
+            # Download the content
+            response = scraper.get_response(resource_url)
+            print(f"DEBUG: Download status code: {response.status_code}")
+            if response.status_code != 200:
+                return None
+                
+            content = response.content
+            print(f"DEBUG: Downloaded content size: {len(content)} bytes")
+            
+            # Process based on format
+            if resource_format == 'pdf':
+                print("DEBUG: Found PDF data dictionary")
+                # For PDF, just return the URL since we can't easily extract text
+                return f"PDF data dictionary available at: {resource_url}"
+            elif resource_format in ['.xlsx', '.xls', 'xlsx', 'xls']:
+                print("DEBUG: Processing Excel data dictionary")
+                # Process Excel files like in module.get_data_dictionary()
+                try:
+                    # Store the content in an in-memory file
+                    in_memory_file = io.BytesIO(content)
+                    
+                    # Load the Excel file into a DataFrame
+                    df = pd.read_excel(in_memory_file)
+                    print(f"DEBUG: Excel data loaded, shape: {df.shape}")
+                    
+                    # Select only the first two columns, drop NaN values, and clean the data
+                    df_filtered = df.iloc[:, :2].dropna()  # First two columns and remove NaNs
+                    print(f"DEBUG: Filtered data shape: {df_filtered.shape}")
+                    df_filtered = df_filtered.apply(lambda x: x.str.strip() if hasattr(x, 'str') else x)  # Strip whitespace
+                    
+                    # Convert to string without index or header
+                    df_text = df_filtered.to_string(index=False, header=False, justify='left')
+                    
+                    # Clean up excessive spaces and format with tabs
+                    df_text_cleaned = re.sub(r' {3,}', '\t', df_text)
+                    df_text_cleaned = '\n'.join(line.lstrip() for line in df_text_cleaned.split('\n'))
+                    print(f"DEBUG: Processed text length: {len(df_text_cleaned)} chars")
+                    
+                    return df_text_cleaned
+                except Exception as e:
+                    print(f"DEBUG: Error processing Excel file: {e}")
+                    return f"{resource_format.upper()} data dictionary available at: {resource_url}"
+            else:
+                print(f"DEBUG: Attempting to decode text content from {resource_format} file")
+                # For text formats, decode and return the content
+                try:
+                    text_content = content.decode('utf-8')
+                    print(f"DEBUG: Successfully decoded with utf-8, length: {len(text_content)}")
+                    return text_content
+                except UnicodeDecodeError:
+                    print("DEBUG: utf-8 decode failed, trying latin1")
+                    try:
+                        text_content = content.decode('latin1')
+                        print(f"DEBUG: Successfully decoded with latin1, length: {len(text_content)}")
+                        return text_content
+                    except:
+                        print("DEBUG: All decoding attempts failed")
+                        return f"Data dictionary available at: {resource_url}"
+        except Exception as e:
+            print(f"DEBUG: Error retrieving data dictionary: {str(e)}")
+            return None
+
     def to_dict(self):
         """
         Convert the Dataset object to a JSON serializable dictionary.
@@ -46,7 +163,7 @@ class Dataset:
             dict: A dictionary representation of the Dataset.
         """
         # Create a base dictionary from the object's attributes
-        dataset_dict = {k: v for k, v in self.__dict__.items()}
+        dataset_dict = {k.lstrip('_'): v for k, v in self.__dict__.items()}
         
         # Handle any non-serializable objects or custom serialization logic
         # Add custom serialization for specific attributes if needed
@@ -78,22 +195,22 @@ class Dataset:
         with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
             json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
 
-    def data(self, filename=None):
+    def data(self, filename=None, file_index=0):
         """
         Load dataset files as pandas DataFrames.
         
         Args:
-            filename (str, optional): Specific file to load. If None, loads all data files.
+            filename (str, optional): Specific file to load. If None, loads the first available data file.
+            file_index (int, optional): When multiple files are available and no filename is specified,
+                                        determines which file to load (default: 0 - first file).
         
         Returns:
-            pandas.DataFrame: If there's only one data file and no filename specified
-            dict: Mapping of filenames to pandas DataFrames if multiple files are found
-            pandas.DataFrame: The specific file requested if filename is provided
-            
+            pandas.DataFrame: The loaded dataset as a DataFrame
+                
         Raises:
             FileNotFoundError: If the dataset directory or requested file doesn't exist
                 and no downloadable resources are available
-            ValueError: If the file format is not supported
+            ValueError: If the file format is not supported or if the file_index is out of range
         """
         # Build the path to the dataset directory
         dataset_dir = os.path.join('datasets', self.id)
@@ -132,7 +249,10 @@ class Dataset:
                 data_resources = []
                 for resource in resources:
                     resource_name = resource['name'].lower() if resource.get('name') else ''
-                    if "diccionario de datos" not in resource_name and "diccionario" not in resource_name:
+                    resource_format = resource['format'].lower() if 'format' in resource else ''
+                    if ("diccionario de datos" not in resource_name and 
+                        "diccionario" not in resource_name and
+                        resource_format != 'pdf'):
                         data_resources.append(resource)
                 
                 # If looking for a specific file by name
@@ -142,36 +262,25 @@ class Dataset:
                     if matching_resources:
                         return self._download_and_load_dataframe(matching_resources[0])
                 
-                # If no specific file is requested and there's only one data resource
-                elif len(data_resources) == 1:
-                    return self._download_and_load_dataframe(data_resources[0])
-                
-                # If multiple data resources
+                # If there are data resources available
                 elif data_resources:
-                    data_dict = {}
-                    for resource in data_resources:
-                        try:
-                            resource_name = f"{resource['name']}.{resource['format'].lower()}"
-                            data_dict[resource_name] = self._download_and_load_dataframe(resource)
-                        except Exception as e:
-                            print(f"Error downloading {resource['name']}: {e}")
-                    return data_dict
+                    # Check if file_index is valid
+                    if file_index >= 0 and file_index < len(data_resources):
+                        return self._download_and_load_dataframe(data_resources[file_index])
+                    elif data_resources:
+                        # If file_index is out of range, use the first resource
+                        print(f"Warning: file_index {file_index} is out of range. Using first available resource.")
+                        return self._download_and_load_dataframe(data_resources[0])
         
         # If we have local files, process them
         if data_files:
-            if len(data_files) == 1:
+            # Check if file_index is valid for local files
+            if file_index >= 0 and file_index < len(data_files):
+                return self._load_file_as_dataframe(data_files[file_index])
+            else:
+                # If file_index is out of range, use the first file
+                print(f"Warning: file_index {file_index} is out of range. Using first available file.")
                 return self._load_file_as_dataframe(data_files[0])
-            
-            # If there are multiple data files, return a dictionary of DataFrames
-            data_dict = {}
-            for file_path in data_files:
-                filename = os.path.basename(file_path)
-                try:
-                    data_dict[filename] = self._load_file_as_dataframe(file_path)
-                except Exception as e:
-                    print(f"Error loading {filename}: {e}")
-            
-            return data_dict
         
         # If we reach here, we couldn't find or download any data files
         raise FileNotFoundError(f"No data files found locally or available for download in dataset {self.id}")

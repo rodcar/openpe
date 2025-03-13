@@ -91,7 +91,19 @@ class TestModule(unittest.TestCase):
     def test_load_dataset_data_1(self):
         datasets = pe.load()
         data = datasets[1].data() # search for the only .csv file or data file otherwise needs a name as argument
+        print(data.head())
+
+    def test_get_dataset_and_data_directly(self):
+        dataset = pe.get_dataset('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
+        data = dataset.data()
+        print(len(data))
         print(data)
+
+
+    def test_get_dataset_and_access_to_data_dictionary_directly(self):
+        dataset = pe.get_dataset('alumnos-matriculados-en-la-universidad-nacional-de-ingeniería-uni')
+        dic = dataset.data_dictionary
+        print(dic)
 
 if __name__ == '__main__':
     unittest.main()
