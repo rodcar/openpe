@@ -97,21 +97,19 @@ def get_next_page_url(page_content):
     
     # Find the pagination element
     pagination = page.find('ul', class_='pagination pager')
-    pagination_info = {}
 
     if pagination is None:
-        pagination_info['next_page_url'] = None
-        return pagination_info
+        return None
+        
     # Get the "next" page URL
     next_page = pagination.find('li', class_='pager-next')
     if next_page:
         next_link = next_page.find('a')
-        if next_link:
-            pagination_info['next_page_url'] = next_link['href']
-        else:
-            pagination_info['next_page_url'] = None  # No next page (this could be the last page)
-
-    return pagination_info['next_page_url']
+        if next_link and next_link.get('href'):
+            return next_link['href']
+    
+    # If we reach here, there's no next page
+    return None
 
 def get_datasets(category, limit=math.inf, show_progress=True):
     page_url = f'search/field_topic/{category}/type/dataset?sort_by=changed'
@@ -119,36 +117,38 @@ def get_datasets(category, limit=math.inf, show_progress=True):
     page_counter = 0
     items_per_page = 10
 
-    iterator = tqdm(total=limit, desc="Fetching datasets", unit="dataset") if show_progress else range(limit)
+    iterator = tqdm(total=limit, desc="Fetching datasets", unit=" dataset") if show_progress else range(limit)
 
-    while len(datasets) < limit:
-        results = scraper.fetch_page(page_url)
-        items = get_items(results)
-        for item in items:
-            if len(datasets) >= limit:
-                break
-            dataset = Dataset(
-                id=item.get('id', ''),
-                title=item.get('title', ''),
-                description=item.get('description', ''),
-                categories=[category],
-                url=item.get('url', ''),
-                modified_date='',
-                release_date='',
-                publisher=item.get('organization', ''),
-                metadata={}
-            )
+    while len(datasets) < limit and page_url:
+        try:
+            results = scraper.fetch_page(page_url)
+            items = get_items(results)
+            for item in items:
+                if len(datasets) >= limit:
+                    break
+                dataset = Dataset(
+                    id=item.get('id', ''),
+                    title=item.get('title', ''),
+                    description=item.get('description', ''),
+                    categories=[category],
+                    url=item.get('url', ''),
+                    modified_date='',
+                    release_date='',
+                    publisher=item.get('organization', ''),
+                    metadata={}
+                )
 
-            if len(datasets) < limit:
-                dataset = expand_dataset(dataset)
-                datasets.append(dataset)
-                if show_progress:
-                    iterator.update(1)
-        page_url = get_next_page_url(results)
-        
-        if not page_url or page_url['next_page_url'] is None:
+                if len(datasets) < limit:
+                    dataset = expand_dataset(dataset)
+                    datasets.append(dataset)
+                    if show_progress:
+                        iterator.update(1)
+            
+            page_url = get_next_page_url(results)
+            page_counter += 1
+        except Exception as e:
+            print(f"Error fetching page: {e}")
             break
-        page_counter += 1
 
     if show_progress:
         iterator.close()
@@ -169,14 +169,28 @@ def expand_dataset(dataset, include_data_dictionary=False):
 
         details['format_json'] = metadata.json()
         dataset.metadata = metadata.json()
-        dataset.title = metadata.json()['result'][0]['title']
-        dataset.description = metadata.json()['result'][0]['notes']
-        dataset.url = metadata.json()['result'][0]['url']
-        dataset.id = metadata.json()['result'][0]['id']
-        dataset.modified_date = metadata.json()['result'][0]['metadata_modified']
-        dataset.release_date = metadata.json()['result'][0]['metadata_created']
-        dataset.publisher = metadata.json()['result'][0]['groups'][0]['title']
-        dataset.categories = metadata.json()['result'][0]['groups']
+        
+        # Safely extract fields with defaults for missing values
+        result = metadata.json().get('result', [{}])[0] if metadata.json().get('result') else {}
+        
+        dataset.title = result.get('title', '')
+        dataset.description = result.get('notes', '')  # Using get() with default empty string
+        dataset.url = result.get('url', '')
+        dataset.id = result.get('id', '')
+        dataset.modified_date = result.get('metadata_modified', '')
+        dataset.release_date = result.get('metadata_created', '')
+        
+        # Handle nested groups data safely
+        try:
+            if result.get('groups') and len(result['groups']) > 0:
+                dataset.publisher = result['groups'][0].get('title', '')
+                dataset.categories = result['groups']
+            else:
+                dataset.publisher = ''
+                dataset.categories = []
+        except (KeyError, IndexError, TypeError):
+            dataset.publisher = ''
+            dataset.categories = []
         
         if include_data_dictionary:
             data_dictionary_url = get_data_dictionary_url(metadata.json())
