@@ -196,24 +196,64 @@ class Dataset:
         return None
 
     def download_files(self, base_folder="datasets"):
+        """
+        Downloads all files associated with the dataset.
+        
+        Args:
+            base_folder (str): Base folder to store downloaded files (default: "datasets")
+            
+        Returns:
+            None
+        """
         scraper = WebScraper()
         folder_name = os.path.join(base_folder, self.id)
         os.makedirs(folder_name, exist_ok=True)
         
-        for resource in self.metadata['result'][0]['resources']:
+        # Check if metadata has the expected structure
+        if not self.metadata:
+            print(f"Warning: No metadata available for dataset {self.id}")
+            # Save the dataset info even if no files are downloaded
+            with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
+                json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
+            return
+            
+        # Check if 'result' key exists
+        if 'result' not in self.metadata or not self.metadata['result']:
+            #print(f"Warning: No 'result' found in metadata for dataset {self.id}")
+            # Save the dataset info even if no files are downloaded
+            with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
+                json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
+            return
+            
+        # Check if 'resources' key exists
+        if 'resources' not in self.metadata['result'][0]:
+            #print(f"Warning: No 'resources' found in metadata for dataset {self.id}")
+            # Save the dataset info even if no files are downloaded
+            with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
+                json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
+            return
+        
+        resources = self.metadata['result'][0]['resources']
+        
+        for resource in resources:
+            # Check if resource has required keys
+            if 'url' not in resource:
+                #print(f"Warning: Resource missing URL in dataset {self.id}")
+                continue
+                
             resource_url = resource['url']
-            resource_format = resource['format']
+            resource_format = resource.get('format', 'unknown')
             
             # Skip download if URL is empty
             if resource_url == '':
-                #print(f"Skipping {resource['name']} as URL is empty")
+                #print(f"Skipping {resource.get('name', 'unnamed resource')} as URL is empty")
                 continue
             
             # Extract filename from URL or fall back to resource name
             filename = self._extract_filename_from_url(resource_url)
             if not filename:
                 # Fall back to original method
-                resource_name = resource['name']
+                resource_name = resource.get('name', f'file_{id(resource)}')
                 file_extension = resource_format.lower()
                 filename = f"{resource_name}.{file_extension}"
             
