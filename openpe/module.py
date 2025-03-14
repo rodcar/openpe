@@ -146,7 +146,7 @@ def get_datasets(category, limit=math.inf, show_progress=True):
                     iterator.update(1)
         page_url = get_next_page_url(results)
         
-        if not page_url:
+        if not page_url or page_url['next_page_url'] is None:
             break
         page_counter += 1
 
