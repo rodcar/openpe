@@ -180,6 +180,11 @@ class Dataset:
             resource_format = resource['format']
             resource_name = resource['name']
             
+            # Skip download if URL is empty
+            if resource_url == '':
+                #print(f"Skipping {resource_name} as URL is empty")
+                continue
+                
             response = scraper.get_response(resource_url)
             if response.status_code == 200:
                 file_extension = resource_format.lower()
