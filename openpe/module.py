@@ -229,7 +229,7 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
         details['format_json_url'] = None
         details['format_json'] = None
         error_msg = f"{str(e)}"
-        print(f"Error processing URL: {error_msg}")
+        print(f"\nError processing URL. Error has been logged to logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log")
         if log_errors:
             dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
             log_error(error_msg, dataset_identifier)
