@@ -110,5 +110,17 @@ class TestModule(unittest.TestCase):
         datasets = pe.load()
         print(datasets[0].files)
 
+    def test_search_category_1(self):
+        datasets = pe.get_datasets(Categories.MODELO_DE_GESTION_DOCUMENTAL)
+
+    def test_search_category_2(self):
+        datasets = pe.get_datasets(Categories.ALIMENTACION_Y_NUTRICION, log_errors=True)
+
+    def test_search_category_iterator(self):
+        for dataset in pe.get_datasets(Categories.MODELO_DE_GESTION_DOCUMENTAL, show_progress=True, log_errors=True, as_iterator=True):
+            pe.expand_dataset(dataset)
+            data_dictionary = dataset.data_dictionary
+            pe.save(dataset)
+
 if __name__ == '__main__':
     unittest.main()
