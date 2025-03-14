@@ -437,3 +437,20 @@ def load(dataset_name=None):
         raise FileNotFoundError(f"No dataset found with name: {dataset_name}")
     
     return datasets
+
+def stats():
+    """
+    Print statistics about the datasets in the 'datasets' folder.
+    """
+    datasets = load()
+    print(f"Total datasets: {len(datasets)}")
+    
+    # Count datasets by category
+    category_counts = {}
+    for dataset in datasets:
+        for category in dataset.categories:
+            category_counts[category] = category_counts.get(category, 0) + 1
+    
+    print("\nCategory counts:")
+    for category, count in category_counts.items():
+        print(f"{category}: {count}")
