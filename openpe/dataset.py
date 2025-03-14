@@ -7,6 +7,7 @@ import glob
 import io
 import re  # Add import for regex processing
 import urllib.parse  # Add this import for URL decoding
+from .module import log_error 
 
 class Dataset:
     def __init__(self, id: str, title: str, description: str, categories: list, url: str, modified_date: str, release_date: str, publisher: str, metadata: dict, data_dictionary: str = None):
@@ -195,7 +196,7 @@ class Dataset:
         
         return None
 
-    def download_files(self, base_folder="datasets"):
+    def download_files(self, base_folder="datasets", log_errors=False):
         """
         Downloads all files associated with the dataset.
         
@@ -211,7 +212,10 @@ class Dataset:
         
         # Check if metadata has the expected structure
         if not self.metadata:
-            print(f"Warning: No metadata available for dataset {self.id}")
+            if log_errors:
+                dataset_identifier = f"Title: {self.title or 'Unknown'}, URL: {self.url or 'Unknown'} ID: {self.id}"
+                log_error(f"No metadata available for dataset", dataset_identifier)
+            #print(f"Warning: No metadata available for dataset {self.id}")
             # Save the dataset info even if no files are downloaded
             with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
                 json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
