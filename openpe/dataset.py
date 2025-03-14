@@ -6,6 +6,7 @@ import pandas as pd
 import glob
 import io
 import re  # Add import for regex processing
+import urllib.parse  # Add this import for URL decoding
 
 class Dataset:
     def __init__(self, id: str, title: str, description: str, categories: list, url: str, modified_date: str, release_date: str, publisher: str, metadata: dict, data_dictionary: str = None):
@@ -170,6 +171,30 @@ class Dataset:
         
         return dataset_dict
 
+    def _extract_filename_from_url(self, url):
+        """
+        Extract the actual filename from a URL and decode URL-encoded characters.
+        
+        Args:
+            url (str): The URL to extract the filename from
+            
+        Returns:
+            str: The extracted and decoded filename, or None if extraction fails
+        """
+        if not url:
+            return None
+            
+        try:
+            # Extract the filename from the last part of the URL path
+            match = re.search(r'/([^/]+)$', url)
+            if match:
+                # Decode URL-encoded characters (like %20 to space)
+                return urllib.parse.unquote(match.group(1))
+        except Exception:
+            pass
+        
+        return None
+
     def download_files(self, base_folder="datasets"):
         scraper = WebScraper()
         folder_name = os.path.join(base_folder, self.id)
@@ -178,24 +203,33 @@ class Dataset:
         for resource in self.metadata['result'][0]['resources']:
             resource_url = resource['url']
             resource_format = resource['format']
-            resource_name = resource['name']
             
             # Skip download if URL is empty
             if resource_url == '':
-                #print(f"Skipping {resource_name} as URL is empty")
+                #print(f"Skipping {resource['name']} as URL is empty")
                 continue
-                
+            
+            # Extract filename from URL or fall back to resource name
+            filename = self._extract_filename_from_url(resource_url)
+            if not filename:
+                # Fall back to original method
+                resource_name = resource['name']
+                file_extension = resource_format.lower()
+                filename = f"{resource_name}.{file_extension}"
+            
+            # Ensure the filename is URL-decoded (in case it wasn't done in _extract_filename_from_url)
+            filename = urllib.parse.unquote(filename)
+            
             response = scraper.get_response(resource_url)
             if response.status_code == 200:
-                file_extension = resource_format.lower()
-                file_path = os.path.join(folder_name, f"{resource_name}.{file_extension}")
+                file_path = os.path.join(folder_name, filename)
                 
                 with open(file_path, 'wb') as file:
                     file.write(response.content)
                 
                 time.sleep(5)  # Wait for 5 seconds before downloading the next file
             else:
-                print(f"Failed to download {resource_name}. Status code: {response.status_code}")
+                print(f"Failed to download {filename}. Status code: {response.status_code}")
         
         with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
             json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
