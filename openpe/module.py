@@ -10,15 +10,37 @@ from tqdm import tqdm
 import math
 from .dataset import Dataset
 import time
+import datetime
 
 BASE_URL = "https://datosabiertos.gob.pe"
 scraper = WebScraper(BASE_URL)
 
-#def get_dataset_by_id(dataset_id: str) -> dict:
-    #response = scraper.fetch_page(f"datasets/{dataset_id}")
-    #return response.json()
+def log_error(message, dataset_identifier=None):
+    """
+    Log an error message to a file with timestamp.
+    
+    Args:
+        message (str): Error message to log
+        dataset_identifier (str, optional): Dataset name or URL that failed
+    """
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    
+    # Create log filename with today's date
+    log_filename = f"logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log"
+    
+    # Format the log message
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if dataset_identifier:
+        log_entry = f"[{timestamp}] ERROR with dataset '{dataset_identifier}': {message}\n"
+    else:
+        log_entry = f"[{timestamp}] ERROR: {message}\n"
+    
+    # Write to log file
+    with open(log_filename, 'a', encoding='utf-8') as log_file:
+        log_file.write(log_entry)
 
-def get_dataset(url):
+def get_dataset(url, log_errors=False):
     #delete datosabiertos.gob.pe and alternatives on the url
     url = re.sub(r'https?://(www\.)?datosabiertos.gob.pe', '', url)
 
@@ -36,16 +58,7 @@ def get_dataset(url):
         publisher='',
         metadata={}
     )
-    return expand_dataset(dataset)
-
-#def get_datasets_by_multiple_categories(categories: list) -> list:
-    #categories_str = ','.join(categories)
-    #response = scraper.fetch_page(f"datasets?categories={categories_str}")
-    #return response.json()
-
-#def get_datasets(keyword: str) -> list:
-    #response = scraper.fetch_page(f"datasets?search={keyword}")
-    #return response.json()
+    return expand_dataset(dataset, log_errors=log_errors)
 
 # download the dataset files or resource in a new folder: dataset id.json
 def download_dataset(dataset: Dataset):
@@ -111,7 +124,7 @@ def get_next_page_url(page_content):
     # If we reach here, there's no next page
     return None
 
-def get_datasets(category, limit=math.inf, show_progress=True):
+def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False):
     page_url = f'search/field_topic/{category}/type/dataset?sort_by=changed'
     datasets = []
     page_counter = 0
@@ -139,7 +152,7 @@ def get_datasets(category, limit=math.inf, show_progress=True):
                 )
 
                 if len(datasets) < limit:
-                    dataset = expand_dataset(dataset)
+                    dataset = expand_dataset(dataset, log_errors=log_errors)
                     datasets.append(dataset)
                     if show_progress:
                         iterator.update(1)
@@ -147,7 +160,10 @@ def get_datasets(category, limit=math.inf, show_progress=True):
             page_url = get_next_page_url(results)
             page_counter += 1
         except Exception as e:
-            print(f"Error fetching page: {e}")
+            error_msg = f"Error fetching page: {e}"
+            print(error_msg)
+            if log_errors:
+                log_error(error_msg, f"category={category}, page={page_counter}")
             break
 
     if show_progress:
@@ -155,7 +171,7 @@ def get_datasets(category, limit=math.inf, show_progress=True):
     
     return datasets
 
-def expand_dataset(dataset, include_data_dictionary=False):
+def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
     details = {}
     
     try:
@@ -196,19 +212,27 @@ def expand_dataset(dataset, include_data_dictionary=False):
             data_dictionary_url = get_data_dictionary_url(metadata.json())
 
             if data_dictionary_url:
-                dataset.data_dictionary = get_data_dictionary(data_dictionary_url)
+                dataset.data_dictionary = get_data_dictionary(data_dictionary_url, log_errors=log_errors)
             else:
                 dataset.data_dictionary = 'Diccionario de datos no disponible'
     except AttributeError:
         # Handle case where find() returns None or href doesn't exist
         details['format_json_url'] = None
         details['format_json'] = None
-        print("Error: Could not find JSON link element")
+        error_msg = "Could not find JSON link element"
+        print(f"Error: {error_msg}")
+        if log_errors:
+            dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
+            log_error(error_msg, dataset_identifier)
     except Exception as e:
         # Handle other potential errors (network issues, JSON parsing, etc.)
         details['format_json_url'] = None
         details['format_json'] = None
-        print(f"Error processing URL: {str(e)}")
+        error_msg = f"{str(e)}"
+        print(f"Error processing URL: {error_msg}")
+        if log_errors:
+            dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
+            log_error(error_msg, dataset_identifier)
     return dataset
 
 def get_data_dictionary_url(item):
@@ -224,7 +248,7 @@ def get_data_dictionary_url(item):
         print(f"Error processing item: {str(e)}")
     return diccionario_url
             
-def get_data_dictionary(url, headers=None):
+def get_data_dictionary(url, headers=None, log_errors=False):
     scraper_with_headers = WebScraper(BASE_URL, headers=headers)
     try:
         # Fetch the response from the URL
@@ -251,28 +275,43 @@ def get_data_dictionary(url, headers=None):
             
             return df_text_cleaned
         else:
-            print(f"Failed to download. Status code: {response.status_code}")
-            return None  # Or handle it differently
+            error_msg = f"Failed to download. Status code: {response.status_code}"
+            print(error_msg)
+            if log_errors:
+                log_error(error_msg, url)
+            return None
     
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching the URL: {e}")
+        error_msg = f"Error fetching the URL: {e}"
+        print(error_msg)
+        if log_errors:
+            log_error(error_msg, url)
         return None
     except pd.errors.ParserError as e:
-        print(f"Error parsing the Excel file: {e}")
+        error_msg = f"Error parsing the Excel file: {e}"
+        print(error_msg)
+        if log_errors:
+            log_error(error_msg, url)
         return None
     except ValueError as e:
-        print(f"Error processing the DataFrame (e.g., empty or invalid data): {e}")
+        error_msg = f"Error processing the DataFrame (e.g., empty or invalid data): {e}"
+        print(error_msg)
+        if log_errors:
+            log_error(error_msg, url)
         return None
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg)
+        if log_errors:
+            log_error(error_msg, url)
         return None
 
-def expand_datasets(datasets, filename=None, show_progress=True):
+def expand_datasets(datasets, filename=None, show_progress=True, log_errors=False):
     expanded_datasets = []
     iterator = tqdm(datasets, desc="Expanding datasets", unit="dataset") if show_progress else datasets
 
     for dataset in iterator:
-        expanded_datasets.append(expand_dataset(dataset))
+        expanded_datasets.append(expand_dataset(dataset, log_errors=log_errors))
         time.sleep(1)  # Add a 5 seconds wait
 
     if filename:
