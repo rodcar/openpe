@@ -124,21 +124,31 @@ def get_next_page_url(page_content):
     # If we reach here, there's no next page
     return None
 
-def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False):
+def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False, as_iterator=False):
     page_url = f'search/field_topic/{category}/type/dataset?sort_by=changed'
-    datasets = []
+    datasets = [] if not as_iterator else None
     page_counter = 0
-    items_per_page = 10
+    dataset_counter = 0
 
-    iterator = tqdm(total=limit, desc="Fetching datasets", unit=" dataset") if show_progress else range(limit)
+    # Fix: Don't pass infinite limit to tqdm
+    if show_progress:
+        if math.isinf(limit):
+            # Without a fixed total
+            iterator = tqdm(desc="Fetching datasets", unit=" dataset") 
+        else:
+            # With a fixed total
+            iterator = tqdm(total=limit, desc="Fetching datasets", unit=" dataset")
+    else:
+        iterator = None
 
-    while len(datasets) < limit and page_url:
+    while dataset_counter < limit and page_url:
         try:
             results = scraper.fetch_page(page_url)
             items = get_items(results)
             for item in items:
-                if len(datasets) >= limit:
+                if dataset_counter >= limit:
                     break
+                    
                 dataset = Dataset(
                     id=item.get('id', ''),
                     title=item.get('title', ''),
@@ -151,11 +161,16 @@ def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False)
                     metadata={}
                 )
 
-                if len(datasets) < limit:
-                    dataset = expand_dataset(dataset, log_errors=log_errors)
+                dataset = expand_dataset(dataset, log_errors=log_errors)
+                dataset_counter += 1
+                
+                if show_progress and iterator is not None:
+                    iterator.update(1)
+                    
+                if as_iterator:
+                    yield dataset
+                else:
                     datasets.append(dataset)
-                    if show_progress:
-                        iterator.update(1)
             
             page_url = get_next_page_url(results)
             page_counter += 1
@@ -166,16 +181,19 @@ def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False)
                 log_error(error_msg, f"category={category}, page={page_counter}")
             break
 
-    if show_progress:
+    if show_progress and iterator is not None:
         iterator.close()
     
-    return datasets
+    if not as_iterator:
+        return datasets
 
 def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
     details = {}
     
+    url = re.sub(r'https?://(www\.)?datosabiertos.gob.pe', '', dataset.url)
+
     try:
-        response = scraper.get_response(f'{BASE_URL}{dataset.url}')
+        response = scraper.get_response(f'{BASE_URL}{url}')
         page = parse_html(response.content)
 
         link = page.find('a', {'title': 'json view of content'})['href']
@@ -229,7 +247,7 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
         details['format_json_url'] = None
         details['format_json'] = None
         error_msg = f"{str(e)}"
-        print(f"Error processing URL. Error has been logged to logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log")
+        print(f"Error processing URL: {error_msg}. Error has been logged to logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log")
         if log_errors:
             dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
             log_error(error_msg, dataset_identifier)
