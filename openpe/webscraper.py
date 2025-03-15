@@ -1,5 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+import logging
+import os
+from datetime import datetime
+from openpe.errors import log_error
 
 class WebScraper:
     def __init__(self, base_url: str = '', headers: dict = None):
@@ -9,9 +13,13 @@ class WebScraper:
         }
 
     def get_response(self, url: str):
-        response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
-        return response
+        try:
+            response = requests.get(url, headers=self.headers)
+            #response.raise_for_status()
+            return response
+        except Exception as e:
+            log_error(f"Error fetching URL: {url}, Error: {str(e)}")
+            #raise
 
     def fetch_page(self, endpoint: str) -> str:
         response = self.get_response(f"{self.base_url}/{endpoint}")

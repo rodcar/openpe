@@ -7,7 +7,7 @@ import glob
 import io
 import re  # Add import for regex processing
 import urllib.parse  # Add this import for URL decoding
-from .module import log_error 
+from .errors import log_error  # Updated import to avoid circular dependency
 
 class Dataset:
     def __init__(self, id: str, title: str, description: str, categories: list, url: str, modified_date: str, release_date: str, publisher: str, metadata: dict, data_dictionary: str = None):
@@ -97,8 +97,8 @@ class Dataset:
             
             # Download the content
             response = scraper.get_response(resource_url)
-            #print(f"DEBUG: Download status code: {response.status_code}")
-            if response.status_code != 200:
+            #print(f"DEBUG: Download status code: {response.status_code if response else 'None'}")
+            if response is None or response.status_code != 200:
                 return None
                 
             content = response.content
@@ -265,7 +265,7 @@ class Dataset:
             filename = urllib.parse.unquote(filename)
             
             response = scraper.get_response(resource_url)
-            if response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 file_path = os.path.join(folder_name, filename)
                 
                 with open(file_path, 'wb') as file:
@@ -273,7 +273,8 @@ class Dataset:
                 
                 time.sleep(5)  # Wait for 5 seconds before downloading the next file
             else:
-                print(f"Failed to download {filename}. Status code: {response.status_code}")
+                status = response.status_code if response else "None (request failed)"
+                print(f"Failed to download {filename}. Status code: {status}")
         
         with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
             json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
@@ -401,13 +402,15 @@ class Dataset:
         # Check if format is supported
         if resource_format not in ['csv', 'xlsx', 'xls', 'json', 'parquet']:
             raise ValueError(f"Unsupported file format: {resource_format}")
-        
         # Download the file
         response = scraper.get_response(resource_url)
+        if response is None:
+            raise ValueError("Failed to download resource. Response was None")
         if response.status_code != 200:
             raise ValueError(f"Failed to download resource. Status code: {response.status_code}")
         
         # Create in-memory file object
+        content = response.content
         content = response.content
         
         # For CSV files, use our existing encoding and separator detection logic

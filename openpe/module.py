@@ -8,37 +8,13 @@ import pandas as pd
 import re
 from tqdm import tqdm
 import math
-from .dataset import Dataset
 import time
 import datetime
+from .errors import log_error  # Import log_error from new module
+from .dataset import Dataset  # Add this import statement
 
 BASE_URL = "https://datosabiertos.gob.pe"
 scraper = WebScraper(BASE_URL)
-
-def log_error(message, dataset_identifier=None):
-    """
-    Log an error message to a file with timestamp.
-    
-    Args:
-        message (str): Error message to log
-        dataset_identifier (str, optional): Dataset name or URL that failed
-    """
-    # Create logs directory if it doesn't exist
-    os.makedirs('logs', exist_ok=True)
-    
-    # Create log filename with today's date
-    log_filename = f"logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log"
-    
-    # Format the log message
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if dataset_identifier:
-        log_entry = f"[{timestamp}] ERROR with dataset '{dataset_identifier}': {message}\n"
-    else:
-        log_entry = f"[{timestamp}] ERROR: {message}\n"
-    
-    # Write to log file
-    with open(log_filename, 'a', encoding='utf-8') as log_file:
-        log_file.write(log_entry)
 
 def get_dataset(url, log_errors=False):
     #delete datosabiertos.gob.pe and alternatives on the url
@@ -194,6 +170,14 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
 
     try:
         response = scraper.get_response(f'{BASE_URL}{url}')
+        if response is None:
+            error_msg = f"Failed to get response for URL: {BASE_URL}{url}"
+            print(error_msg)
+            if log_errors:
+                dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
+                log_error(error_msg, dataset_identifier)
+            return dataset
+            
         page = parse_html(response.content)
 
         link = page.find('a', {'title': 'json view of content'})['href']
