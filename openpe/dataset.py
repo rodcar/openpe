@@ -196,12 +196,14 @@ class Dataset:
         
         return None
 
-    def download_files(self, base_folder="datasets", log_errors=False):
+    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False):
         """
         Downloads all files associated with the dataset.
         
         Args:
             base_folder (str): Base folder to store downloaded files (default: "datasets")
+            log_errors (bool): Whether to log errors (default: False)
+            skip_existing (bool): Whether to skip files that already exist locally (default: False)
             
         Returns:
             None
@@ -264,10 +266,15 @@ class Dataset:
             # Ensure the filename is URL-decoded (in case it wasn't done in _extract_filename_from_url)
             filename = urllib.parse.unquote(filename)
             
+            file_path = os.path.join(folder_name, filename)
+            
+            # Check if file exists and skip_existing is True
+            if skip_existing and os.path.exists(file_path):
+                #print(f"Skipping {filename} as it already exists locally")
+                continue
+            
             response = scraper.get_response(resource_url)
             if response is not None and response.status_code == 200:
-                file_path = os.path.join(folder_name, filename)
-                
                 with open(file_path, 'wb') as file:
                     file.write(response.content)
                 
