@@ -122,5 +122,8 @@ class TestModule(unittest.TestCase):
             data_dictionary = dataset.data_dictionary
             pe.save(dataset)
 
+    def test_statss(self):
+        pe.stats()
+
 if __name__ == '__main__':
     unittest.main()
