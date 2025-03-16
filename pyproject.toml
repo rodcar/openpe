@@ -8,8 +8,7 @@ readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
     "requests",
-    "beautifulsoup4>=4.12.0",
-    "soupsieve>1.2",
+    "bs4",
     "pandas",
     "tqdm",
     "openpyxl",
