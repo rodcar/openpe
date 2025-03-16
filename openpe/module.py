@@ -448,12 +448,16 @@ def load(dataset_name=None):
     
     return datasets
 
-def stats():
+def stats(as_dict=False):
     """
     Print statistics about the datasets in the 'datasets' folder.
+    
+    Args:
+        as_dict (bool): If True, return the results as a dictionary.
+                        If False, print the results. Default is False.
     """
     datasets = load()
-    print(f"Total datasets: {len(datasets)}")
+    total_datasets = len(datasets)
     
     # Count datasets by category
     category_counts = {}
@@ -464,6 +468,13 @@ def stats():
     # Sort categories by count in descending order
     sorted_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)
     
-    print("\nCategorias:")
-    for category, count in sorted_categories:
-        print(f"{category}: {count}")
+    if as_dict:
+        return {
+            "total": total_datasets,
+            "categories": {category: count for category, count in sorted_categories}
+        }
+    else:
+        print(f"Total datasets: {total_datasets}")
+        print("\nCategorias:")
+        for category, count in sorted_categories:
+            print(f"{category}: {count}")
