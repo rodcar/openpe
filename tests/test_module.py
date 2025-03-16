@@ -9,6 +9,24 @@ from openpe import Categories, Dataset
 
 class TestModule(unittest.TestCase):
 
+    categories = [
+    #'modelo-de-gestión-documental-1479',
+    #'alimentación-y-nutrición-32',
+    'ciencia-y-tecnología-1136',
+    #'energía-340',
+    # 'covid-19-917',
+    # 'agua-y-saneamiento-26',
+    # 'desarrollo-urbano-339',
+    # 'educación-28',
+    # 'salud-27',
+    # 'medio-ambiente-y-recursos-naturales-30',
+    # 'transporte-25',
+    # 'exprésate-perú-con-datos-1466',
+    # 'desarrollo-social-338',
+    # 'economía-y-finanzas-29',
+    # 'gobernabilidad-24',
+    ]
+
     @unittest.skip("Skipping test_get_datasets_by_category")
     def test_get_datasets(self):
         datasets = pe.get_datasets(Categories.MEDIO_AMBIENTE, limit=2)
@@ -122,8 +140,16 @@ class TestModule(unittest.TestCase):
             data_dictionary = dataset.data_dictionary
             pe.save(dataset)
 
-    def test_statss(self):
+    def test_stats(self):
         pe.stats()
+
+    def test_datasets_download(self):
+        for category in self.categories:
+            print(f"Category: {category}")
+            for dataset in pe.get_datasets(category, show_progress=True, log_errors=True, as_iterator=True):
+                pe.expand_dataset(dataset)
+                dataset.download_files(log_errors=True, skip_existing=True)
+                pe.save(dataset)
 
 if __name__ == '__main__':
     unittest.main()
