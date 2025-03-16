@@ -154,7 +154,7 @@ def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False,
             error_msg = f"Error fetching page: {e}"
             print(error_msg)
             if log_errors:
-                log_error(error_msg, f"category={category}, page={page_counter}")
+                log_error(f"{error_msg} - category={category}, page={page_counter}")
             break
 
     if show_progress and iterator is not None:
@@ -175,7 +175,7 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
             print(error_msg)
             if log_errors:
                 dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
-                log_error(error_msg, dataset_identifier)
+                log_error(f"{error_msg} - {dataset_identifier}")
             return dataset
             
         page = parse_html(response.content)
@@ -192,7 +192,17 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
                 if category_id:
                     category_ids.append(category_id)
 
-        link = page.find('a', {'title': 'json view of content'})['href']
+        # Check if the link element exists before accessing 'href'
+        link_element = page.find('a', {'title': 'json view of content'})
+        if link_element is None:
+            error_msg = "JSON link not found in page"
+            print(error_msg)
+            if log_errors:
+                dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
+                log_error(f"{error_msg} - {dataset_identifier}")
+            return dataset
+            
+        link = link_element['href']
         details['format_json_url'] = link
 
         metadata = scraper.get_response(link)
@@ -241,7 +251,7 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
         print(f"Error: {error_msg}")
         if log_errors:
             dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
-            log_error(error_msg, dataset_identifier)
+            log_error(f"{error_msg} - {dataset_identifier}")
     except Exception as e:
         # Handle other potential errors (network issues, JSON parsing, etc.)
         details['format_json_url'] = None
@@ -250,7 +260,7 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
         print(f"Error processing URL: {error_msg}. Error has been logged to logs/error_log_{datetime.datetime.now().strftime('%Y-%m-%d')}.log")
         if log_errors:
             dataset_identifier = f"Title: {dataset.title or 'Unknown'}, URL: {dataset.url or 'Unknown'}"
-            log_error(error_msg, dataset_identifier)
+            log_error(f"{error_msg} - {dataset_identifier}")
     return dataset
 
 def get_data_dictionary_url(item):
@@ -296,32 +306,32 @@ def get_data_dictionary(url, headers=None, log_errors=False):
             error_msg = f"Failed to download. Status code: {response.status_code}"
             print(error_msg)
             if log_errors:
-                log_error(error_msg, url)
+                log_error(f"{error_msg} - {url}")
             return None
     
     except requests.exceptions.RequestException as e:
         error_msg = f"Error fetching the URL: {e}"
         print(error_msg)
         if log_errors:
-            log_error(error_msg, url)
+            log_error(f"{error_msg} - {url}")
         return None
     except pd.errors.ParserError as e:
         error_msg = f"Error parsing the Excel file: {e}"
         print(error_msg)
         if log_errors:
-            log_error(error_msg, url)
+            log_error(f"{error_msg} - {url}")
         return None
     except ValueError as e:
         error_msg = f"Error processing the DataFrame (e.g., empty or invalid data): {e}"
         print(error_msg)
         if log_errors:
-            log_error(error_msg, url)
+            log_error(f"{error_msg} - {url}")
         return None
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
         print(error_msg)
         if log_errors:
-            log_error(error_msg, url)
+            log_error(f"{error_msg} - {url}")
         return None
 
 def expand_datasets(datasets, filename=None, show_progress=True, log_errors=False):

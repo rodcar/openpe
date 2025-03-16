@@ -216,7 +216,7 @@ class Dataset:
         if not self.metadata:
             if log_errors:
                 dataset_identifier = f"Title: {self.title or 'Unknown'}, URL: {self.url or 'Unknown'} ID: {self.id}"
-                log_error(f"No metadata available for dataset", dataset_identifier)
+                log_error(f"No metadata available for dataset - {dataset_identifier}")
             #print(f"Warning: No metadata available for dataset {self.id}")
             # Save the dataset info even if no files are downloaded
             with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
