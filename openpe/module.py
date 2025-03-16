@@ -180,6 +180,18 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
             
         page = parse_html(response.content)
 
+        # Extract categories from HTML
+        category_ids = []
+        topic_container = page.find('div', class_='field-name-field-topic')
+        if topic_container:
+            category_links = topic_container.find_all('a', class_='name')
+            for link in category_links:
+                href = link.get('href', '')
+                # Extract the category ID from the href
+                category_id = href.split('/')[-1] if '/' in href else href
+                if category_id:
+                    category_ids.append(category_id)
+
         link = page.find('a', {'title': 'json view of content'})['href']
         details['format_json_url'] = link
 
@@ -210,6 +222,10 @@ def expand_dataset(dataset, include_data_dictionary=False, log_errors=False):
             dataset.publisher = ''
             dataset.categories = []
         
+        # Add the extracted category IDs to the dataset
+        if category_ids:
+            dataset.categories = category_ids
+
         if include_data_dictionary:
             data_dictionary_url = get_data_dictionary_url(metadata.json())
 
