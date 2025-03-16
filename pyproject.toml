@@ -1,6 +1,6 @@
 [project]
 name = "openpe"
-version = "0.3.4.dev0"
+version = "0.3.4.dev1"
 description = "Open Python Package for simple access to Peruvian Open Data"
 authors = [{name = "Ivan", email = "your.email@example.com"}]
 license = {text = "MIT"}
