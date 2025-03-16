@@ -464,6 +464,6 @@ def stats():
     # Sort categories by count in descending order
     sorted_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)
     
-    print("\nCategory counts:")
+    print("\nCategorias:")
     for category, count in sorted_categories:
         print(f"{category}: {count}")
