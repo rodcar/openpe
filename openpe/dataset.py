@@ -281,7 +281,10 @@ class Dataset:
                 time.sleep(5)  # Wait for 5 seconds before downloading the next file
             else:
                 status = response.status_code if response else "None (request failed)"
-                print(f"Failed to download {filename}. Status code: {status}")
+                if log_errors:
+                    log_error(f"Failed to download {filename}. Status code: {status}")
+                else:
+                    print(f"Failed to download {filename}. Status code: {status}")
         
         with open(os.path.join(folder_name, f"{self.id}.json"), 'w', encoding='utf-8') as json_file:
             json.dump(self.to_dict(), json_file, ensure_ascii=False, indent=4)
