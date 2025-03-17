@@ -8,6 +8,7 @@ import io
 import re  # Add import for regex processing
 import urllib.parse  # Add this import for URL decoding
 from .errors import log_error  # Updated import to avoid circular dependency
+import requests
 
 class Dataset:
     def __init__(self, id: str, title: str, description: str, categories: list, url: str, modified_date: str, release_date: str, publisher: str, metadata: dict, data_dictionary: str = None):
@@ -297,14 +298,16 @@ class Dataset:
             
             # Check file size if max_size is set
             if max_size > 0:
-                file_size = self._get_file_size(resource_url, verify_ssl=verify_ssl)
-                if file_size and file_size > max_size:
-                    message = f"Skipping {filename} as its size ({file_size} bytes) exceeds the maximum size limit ({max_size} bytes)"
-                    if log_errors:
-                        log_error(message)
-                    else:
-                        print(message)
-                    continue
+                response = requests.head(resource_url, verify=verify_ssl)
+                if "Content-Length" in response.headers:
+                    file_size = int(response.headers["Content-Length"])
+                    if file_size > max_size:
+                        message = f"Skipping {filename} as its size ({file_size} bytes) exceeds the maximum size limit ({max_size} bytes)"
+                        if log_errors:
+                            log_error(message)
+                        else:
+                            print(message)
+                        continue
             
             response = scraper.get_response(resource_url, verify=verify_ssl)
             if response is not None and response.status_code == 200:
