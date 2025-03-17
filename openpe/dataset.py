@@ -196,7 +196,27 @@ class Dataset:
         
         return None
 
-    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False, verify_ssl=True):
+    def _get_file_size(self, url, verify_ssl=True):
+        """
+        Check file size without downloading the full content by making a HEAD request.
+        
+        Args:
+            url (str): URL of the file
+            verify_ssl (bool): Whether to verify SSL certificates
+            
+        Returns:
+            int or None: Size of the file in bytes, or None if size can't be determined
+        """
+        scraper = WebScraper()
+        try:
+            response = scraper.session.head(url, verify=verify_ssl, allow_redirects=True, timeout=10)
+            if response.status_code == 200 and 'Content-Length' in response.headers:
+                return int(response.headers['Content-Length'])
+        except Exception:
+            pass
+        return None
+
+    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False, verify_ssl=True, max_size=-1):
         """
         Downloads all files associated with the dataset.
         
@@ -204,6 +224,8 @@ class Dataset:
             base_folder (str): Base folder to store downloaded files (default: "datasets")
             log_errors (bool): Whether to log errors (default: False)
             skip_existing (bool): Whether to skip files that already exist locally (default: False)
+            verify_ssl (bool): Whether to verify SSL certificates (default: True)
+            max_size (int): Maximum file size in bytes to download, -1 means no limit (default: -1)
             
         Returns:
             None
@@ -272,6 +294,17 @@ class Dataset:
             if skip_existing and os.path.exists(file_path):
                 #print(f"Skipping {filename} as it already exists locally")
                 continue
+            
+            # Check file size if max_size is set
+            if max_size > 0:
+                file_size = self._get_file_size(resource_url, verify_ssl=verify_ssl)
+                if file_size and file_size > max_size:
+                    message = f"Skipping {filename} as its size ({file_size} bytes) exceeds the maximum size limit ({max_size} bytes)"
+                    if log_errors:
+                        log_error(message)
+                    else:
+                        print(message)
+                    continue
             
             response = scraper.get_response(resource_url, verify=verify_ssl)
             if response is not None and response.status_code == 200:
