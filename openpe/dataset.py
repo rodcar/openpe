@@ -196,7 +196,7 @@ class Dataset:
         
         return None
 
-    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False):
+    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False, verify_ssl=True):
         """
         Downloads all files associated with the dataset.
         
@@ -273,7 +273,7 @@ class Dataset:
                 #print(f"Skipping {filename} as it already exists locally")
                 continue
             
-            response = scraper.get_response(resource_url)
+            response = scraper.get_response(resource_url, verify=verify_ssl)
             if response is not None and response.status_code == 200:
                 with open(file_path, 'wb') as file:
                     file.write(response.content)
