@@ -12,9 +12,12 @@ class WebScraper:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
 
-    def get_response(self, url: str):
+    def get_response(self, url: str, verify=True):
         try:
-            response = requests.get(url, headers=self.headers)
+            if verify:
+                response = requests.get(url, headers=self.headers)
+            else:
+                response = requests.get(url, headers=self.headers, verify=False)
             #response.raise_for_status()
             return response
         except Exception as e:
