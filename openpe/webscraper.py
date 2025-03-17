@@ -12,17 +12,30 @@ class WebScraper:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
 
-    def get_response(self, url: str, verify=True):
+    def get_response(self, url: str, headers=None, verify=True, timeout=600):
+        """
+        Fetch the response from a URL.
+        
+        Args:
+            url (str): The URL to fetch
+            headers (dict, optional): Custom headers for the request
+            verify (bool): Whether to verify SSL certificates
+            timeout (int): Request timeout in seconds
+            
+        Returns:
+            requests.Response: The response object
+        """
         try:
-            if verify:
-                response = requests.get(url, headers=self.headers)
-            else:
-                response = requests.get(url, headers=self.headers, verify=False)
-            #response.raise_for_status()
+            # Merge headers if provided
+            request_headers = self.headers.copy()
+            if headers:
+                request_headers.update(headers)
+                
+            response = requests.get(url, headers=request_headers, verify=verify, timeout=timeout)
             return response
         except Exception as e:
             log_error(f"Error fetching URL: {url}, Error: {str(e)}")
-            #raise
+            return None
 
     def fetch_page(self, endpoint: str) -> str:
         response = self.get_response(f"{self.base_url}/{endpoint}")
