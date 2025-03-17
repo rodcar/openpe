@@ -300,7 +300,7 @@ class Dataset:
             # Check file size if max_size is set
             if max_size > 0:
                 try:
-                    response = requests.head(resource_url, verify=verify_ssl, timeout=request_timeout)
+                    response = scraper.session.head(resource_url, verify=verify_ssl, timeout=request_timeout)
                     if "Content-Length" in response.headers:
                         file_size = int(response.headers["Content-Length"])
                         if file_size > max_size:
@@ -310,14 +310,20 @@ class Dataset:
                             else:
                                 print(message)
                             continue
-                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
                     message = f"Warning: Could not check size of {filename} due to connection error: {str(e)}"
                     if log_errors:
                         log_error(message)
                     else:
                         print(message)
                     # Continue with download attempt anyway
-            
+                except Exception as e:
+                    message = f"Warning: An unexpected error occurred while checking size of {filename}: {str(e)}"
+                    if log_errors:
+                        log_error(message)
+                    else:
+                        print(message)
+                    # Continue with download attempt anyway
             response = scraper.get_response(resource_url, verify=verify_ssl, timeout=request_timeout)
             if response is not None and response.status_code == 200:
                 with open(file_path, 'wb') as file:

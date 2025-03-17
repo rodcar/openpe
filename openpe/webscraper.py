@@ -11,6 +11,7 @@ class WebScraper:
         self.headers = headers or {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
+        self.session = requests.Session()
 
     def get_response(self, url: str, headers=None, verify=True, timeout=600):
         """
@@ -31,7 +32,7 @@ class WebScraper:
             if headers:
                 request_headers.update(headers)
                 
-            response = requests.get(url, headers=request_headers, verify=verify, timeout=timeout)
+            response = self.session.get(url, headers=request_headers, verify=verify, timeout=timeout)
             return response
         except Exception as e:
             log_error(f"Error fetching URL: {url}, Error: {str(e)}")
