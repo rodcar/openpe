@@ -217,7 +217,7 @@ class Dataset:
             pass
         return None
 
-    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False, verify_ssl=True, max_size=-1):
+    def download_files(self, base_folder="datasets", log_errors=False, skip_existing=False, verify_ssl=True, max_size=-1, request_timeout=30):
         """
         Downloads all files associated with the dataset.
         
@@ -227,6 +227,7 @@ class Dataset:
             skip_existing (bool): Whether to skip files that already exist locally (default: False)
             verify_ssl (bool): Whether to verify SSL certificates (default: True)
             max_size (int): Maximum file size in bytes to download, -1 means no limit (default: -1)
+            request_timeout (int): Timeout in seconds for HTTP requests (default: 30)
             
         Returns:
             None
@@ -298,18 +299,26 @@ class Dataset:
             
             # Check file size if max_size is set
             if max_size > 0:
-                response = requests.head(resource_url, verify=verify_ssl)
-                if "Content-Length" in response.headers:
-                    file_size = int(response.headers["Content-Length"])
-                    if file_size > max_size:
-                        message = f"Skipping {filename} as its size ({file_size} bytes) exceeds the maximum size limit ({max_size} bytes)"
-                        if log_errors:
-                            log_error(message)
-                        else:
-                            print(message)
-                        continue
+                try:
+                    response = requests.head(resource_url, verify=verify_ssl, timeout=request_timeout)
+                    if "Content-Length" in response.headers:
+                        file_size = int(response.headers["Content-Length"])
+                        if file_size > max_size:
+                            message = f"Skipping {filename} as its size ({file_size} bytes) exceeds the maximum size limit ({max_size} bytes)"
+                            if log_errors:
+                                log_error(message)
+                            else:
+                                print(message)
+                            continue
+                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                    message = f"Warning: Could not check size of {filename} due to connection error: {str(e)}"
+                    if log_errors:
+                        log_error(message)
+                    else:
+                        print(message)
+                    # Continue with download attempt anyway
             
-            response = scraper.get_response(resource_url, verify=verify_ssl)
+            response = scraper.get_response(resource_url, verify=verify_ssl, timeout=request_timeout)
             if response is not None and response.status_code == 200:
                 with open(file_path, 'wb') as file:
                     file.write(response.content)
