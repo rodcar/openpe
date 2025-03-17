@@ -100,7 +100,7 @@ def get_next_page_url(page_content):
     # If we reach here, there's no next page
     return None
 
-def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False, as_iterator=False):
+def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False, as_iterator=False, start_page=1):
     page_url = f'search/field_topic/{category}/type/dataset?sort_by=changed'
     datasets = [] if not as_iterator else None
     page_counter = 0
@@ -116,6 +116,20 @@ def get_datasets(category, limit=math.inf, show_progress=True, log_errors=False,
             iterator = tqdm(total=limit, desc="Fetching datasets", unit=" dataset")
     else:
         iterator = None
+
+    # Iterate to the start page first
+    for _ in range(start_page - 1):
+        try:
+            results = scraper.fetch_page(page_url)
+            page_url = get_next_page_url(results)
+            if not page_url:
+                raise ValueError("Reached the end of available pages before reaching the start page.")
+        except Exception as e:
+            error_msg = f"Error fetching page: {e}"
+            print(error_msg)
+            if log_errors:
+                log_error(f"{error_msg} - category={category}, page={page_counter}")
+            return datasets if not as_iterator else None
 
     while dataset_counter < limit and page_url:
         try:
