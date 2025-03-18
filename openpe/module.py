@@ -462,6 +462,24 @@ def load(dataset_name=None):
     
     return datasets
 
+def load_by_category(category):
+    """
+    Load all datasets that belong to a specific category.
+    
+    Args:
+        category (str): The category to filter datasets by.
+        
+    Returns:
+        list[Dataset]: A list of Dataset objects that belong to the specified category.
+    """
+    # Load all datasets
+    all_datasets = load()
+    
+    # Filter datasets by category
+    filtered_datasets = [dataset for dataset in all_datasets if category in dataset.categories]
+    
+    return filtered_datasets
+
 def stats(as_dict=False):
     """
     Print statistics about the datasets in the 'datasets' folder.
